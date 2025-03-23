@@ -1,0 +1,50 @@
+\documentclass{article}
+
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage{graphicx}
+
+\usepackage[T1]{fontenc}
+\usepackage{fontspec}
+\usepackage[sfdefault]{inter}
+
+\title{Introduction to Computer Graphics: Project Proposal}
+\author{João Capucho 113713}
+\date{March 14, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+
+My project will be based around recreating the concept behind the \emph{Portal}
+series of games. \emph{Portal} is a series of puzzle games where the player is
+given access to a device capable of putting a pair of portals in surfaces that
+instantly transport any object that comes into contact with one of them to the
+other.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.6\textwidth]{portal2.jpg}
+	\caption{Image from the game \emph{Portal} 2}
+\end{figure}
+
+\section*{Expected results}
+
+The final version is expected to implement a 3D environment where the user
+controls a character that has collisions and follows some basic laws of
+physics, like gravity and inertia. The user can then press a button to cause a
+projectile to be spawned with an initial velocity and isn't affected by any
+acceleration. Once it hits a surface this projectile will spawn one portal, and
+when two are spawned they will link allowing the player to walk into one and
+come out from the other.
+
+The environment will be modeled with dynamic lights and using textures (taken
+from the internet) using Physically Based Rendering (PBR) provided by three.js.
+The character will use a model that contains animations (taken from the
+internet) that will be played according to the user's input (idling, running,
+falling, ...).
+
+A UI for a main menu and pause state will also be developed.
+
+\end{document}
