@@ -12,6 +12,10 @@ export class RapierDebugRenderer {
 		this.mesh.frustumCulled = false;
 	}
 
+	setDebug(debug: boolean) {
+		this.mesh.visible = debug;
+	}
+
 	update() {
 		const { vertices, colors } = this.physicsWorld.debugRender()
 		this.mesh.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
