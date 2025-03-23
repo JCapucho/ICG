@@ -1,36 +1,47 @@
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export interface AppState {
-	update(delta: number): void;
-}
+export type Rapier = typeof import('@dimforge/rapier3d');
+
+import Stats from "stats.js";
+
+import { AppState } from "./states/state";
+
+export const SCENE_LAYER = 0;
+export const PLAYER_LAYER = 1;
 
 export class Application {
-	public scene: THREE.Scene;
-	public camera: THREE.PerspectiveCamera;
-
+	public container: HTMLElement;
 	public renderer: THREE.WebGLRenderer;
 
 	public rgbeLoader: RGBELoader;
 	public textureLoader: THREE.TextureLoader;
+	public gltfLoader: GLTFLoader;
+	public rapier: Rapier;
 
 	private clock: THREE.Clock;
 
 	public state: AppState | null = null;
 
-	constructor(canvas: HTMLCanvasElement) {
+	private stats: Stats;
+
+	constructor(canvas: HTMLElement, rapier: Rapier) {
+		this.container = canvas;
 		this.renderer = new THREE.WebGLRenderer({
-			canvas,
 			antialias: true,
 			powerPreference: "high-performance"
 		});
 		this.renderer.toneMapping = THREE.NeutralToneMapping;
+		this.container.appendChild(this.renderer.domElement);
 
-		this.scene = new THREE.Scene();
-		this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+		this.stats = new Stats();
+		this.container.appendChild(this.stats.dom);
 
 		this.rgbeLoader = new RGBELoader().setPath("public/");
 		this.textureLoader = new THREE.TextureLoader().setPath("public/");
+		this.gltfLoader = new GLTFLoader().setPath("public/");
+		this.rapier = rapier;
 
 		this.clock = new THREE.Clock();
 
@@ -38,27 +49,27 @@ export class Application {
 	}
 
 	private resize() {
-		this.camera.aspect = window.innerWidth / window.innerHeight;
-		this.camera.updateProjectionMatrix();
-
 		this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-	}
-
-	private animate() {
-		const delta = this.clock.getDelta(); // Delta in seconds
 
 		if (this.state)
-			this.state.update(delta)
+			this.state.resize(window.innerWidth, window.innerHeight);
+	}
 
-		this.renderer.render(this.scene, this.camera);
+	private render() {
+		const delta = this.clock.getDelta(); // Delta in seconds
+
+		this.stats.update();
+
+		if (this.state)
+			this.state.render(delta, this.renderer)
 	}
 
 	start() {
 		window.addEventListener("resize", () => {
 			this.resize();
-			this.animate();
+			this.render();
 		});
 
-		this.renderer.setAnimationLoop(this.animate.bind(this));
+		this.renderer.setAnimationLoop(this.render.bind(this));
 	}
 }
