@@ -1,25 +1,41 @@
 import * as THREE from 'three';
 import { SCENE_LAYER, PLAYER_LAYER } from './app';
 
-const geometry = new THREE.PlaneGeometry(50, 50);
+const noPortalTexture =new THREE.MeshBasicMaterial({
+	color: "#ffffff"
+});
+
+const rtWidth = 1024;
+const rtHeight = 1024;
+const renderTarget: THREE.WebGLRenderTarget = new THREE.WebGLRenderTarget(rtWidth, rtHeight);
+
+const cameraRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
 
 export class Portal {
 	private mesh: THREE.Mesh;
 	private material: THREE.Material;
 	private portalCamera: THREE.Camera;
-	private renderTarget: THREE.WebGLRenderTarget;
+
+	private tgtTexture: THREE.WebGLRenderTarget;
 
 	private cameraHelper: THREE.CameraHelper | null = null;
 
-	constructor(scene: THREE.Scene) {
-		const rtWidth = 2048;
-		const rtHeight = 2048;
-		this.renderTarget = new THREE.WebGLRenderTarget(rtWidth, rtHeight);
+	private targetPortal: Portal | null = null;
+
+	constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
+				portal_x: number, portal_y: number) {
+		this.tgtTexture = new THREE.WebGLRenderTarget(rtWidth, rtHeight);
+
+		// Initialize the renderer textures
+		renderer.initRenderTarget(renderTarget);
+		renderer.initRenderTarget(this.tgtTexture);
+
 		this.material = new THREE.MeshBasicMaterial({
-			map: this.renderTarget.texture,
+			map: this.tgtTexture.texture,
 		});
 
-		this.mesh = new THREE.Mesh(geometry, this.material);
+		const geometry = new THREE.PlaneGeometry(portal_x, portal_y);
+		this.mesh = new THREE.Mesh(geometry, noPortalTexture);
 
 		const rtFov = 75;
 		const rtAspect = rtWidth / rtHeight;
@@ -31,9 +47,8 @@ export class Portal {
 		this.portalCamera.layers.enable(SCENE_LAYER);
 		this.portalCamera.layers.enable(PLAYER_LAYER);
 
-		this.mesh.add(this.portalCamera);
-
 		scene.add(this.mesh);
+		scene.add(this.portalCamera);
 	}
 
 	public setDebug(debug: boolean, scene: THREE.Scene) {
@@ -46,16 +61,39 @@ export class Portal {
 			this.cameraHelper.visible = debug;
 	}
 
-	public render(scene: THREE.Scene, renderer: THREE.WebGLRenderer): void {
-		if (!this.mesh.visible)
+	public setTargetPortal(targetPortal: Portal | null) {
+		if (targetPortal) {
+			this.mesh.material = targetPortal.material;
+		} else {
+			this.mesh.material = noPortalTexture;
+		}
+		
+		this.targetPortal = targetPortal;
+	}
+
+	public render(scene: THREE.Scene, mainCamera: THREE.Camera, renderer: THREE.WebGLRenderer): void {
+		if (!this.targetPortal)
 			return;
 
-		this.mesh.visible = false;
+		mainCamera.updateMatrixWorld();
+		this.mesh.updateMatrixWorld();
+		this.targetPortal.mesh.updateMatrixWorld();
 
-		renderer.setRenderTarget(this.renderTarget);
+		const cameraPos = mainCamera.getWorldPosition(new THREE.Vector3());
+		const relativePos = this.targetPortal.mesh.worldToLocal(cameraPos);
+		relativePos.applyQuaternion(cameraRot);
+		this.portalCamera.position.copy(this.mesh.localToWorld(relativePos.clone()));
+
+		let relativeRot = this.targetPortal.mesh.getWorldQuaternion(new THREE.Quaternion())
+			.invert()
+			.multiply(mainCamera.getWorldQuaternion(new THREE.Quaternion()));
+		// relativeRot = new THREE.Quaternion().multiplyQuaternions(cameraRot, relativeRot);
+		this.portalCamera.quaternion.copy(relativeRot);
+
+		renderer.setRenderTarget(renderTarget);
 		renderer.render(scene, this.portalCamera);
 
-		this.mesh.visible = true;
+		renderer.copyTextureToTexture(renderTarget.texture, this.tgtTexture.texture);
 
 		renderer.setRenderTarget(null);
 	}

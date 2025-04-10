@@ -105,12 +105,17 @@ export class MainState extends AppState {
 		this.scene.add(this.plane);
 
 		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
-		this.portal1 = new Portal(this.scene);
-		this.portal2 = new Portal(this.scene);
+		this.portal1 = new Portal(this.scene, app.renderer, 2, 5);
+		this.portal2 = new Portal(this.scene, app.renderer, 2, 5);
 
-		this.portal2.object().scale.set(0.2, 0.2, 0.2);
-		this.portal2.object().position.z = 20;
-		this.portal2.object().rotation.x = Math.PI;
+		this.portal1.setTargetPortal(this.portal2);
+		this.portal2.setTargetPortal(this.portal1);
+
+		this.portal1.object().position.y = 2.5;
+
+		this.portal2.object().position.z = 10;
+		this.portal2.object().position.y = 2.5;
+		this.portal2.object().rotation.y = Math.PI;
 
 		// Physics update
 		this.physicsWorld.start((delta) => {
@@ -126,14 +131,14 @@ export class MainState extends AppState {
 	render(delta: number, renderer: THREE.WebGLRenderer): void {
 		this.player.update(delta);
 
-		this.portal1.render(this.scene, renderer);
-		this.portal2.render(this.scene, renderer);
+		this.portal1.render(this.scene, this.camera, renderer);
+		this.portal2.render(this.scene, this.camera, renderer);
 
 		renderer.render(this.scene, this.camera);
 	}
 
 	debugChanged(debug: boolean): void {
-		this.portal1.setDebug(debug, this.scene);
+		// this.portal1.setDebug(debug, this.scene);
 		this.portal2.setDebug(debug, this.scene);
 		this.physicsWorld.setDebug(debug, this.scene);
 	}
