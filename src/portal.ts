@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SCENE_LAYER, PLAYER_LAYER } from './app';
 
-const noPortalTexture =new THREE.MeshBasicMaterial({
+const noPortalTexture = new THREE.MeshBasicMaterial({
 	color: "#ffffff"
 });
 
@@ -23,7 +23,7 @@ export class Portal {
 	private targetPortal: Portal | null = null;
 
 	constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
-				portal_x: number, portal_y: number) {
+		portal_x: number, portal_y: number) {
 		this.tgtTexture = new THREE.WebGLRenderTarget(rtWidth, rtHeight);
 
 		// Initialize the renderer textures
@@ -42,7 +42,6 @@ export class Portal {
 		const rtNear = 0.1;
 		const rtFar = 1000;
 		this.portalCamera = new THREE.PerspectiveCamera(rtFov, rtAspect, rtNear, rtFar);
-		this.portalCamera.rotation.y = Math.PI;
 
 		this.portalCamera.layers.enable(SCENE_LAYER);
 		this.portalCamera.layers.enable(PLAYER_LAYER);
@@ -67,7 +66,7 @@ export class Portal {
 		} else {
 			this.mesh.material = noPortalTexture;
 		}
-		
+
 		this.targetPortal = targetPortal;
 	}
 
@@ -76,19 +75,19 @@ export class Portal {
 			return;
 
 		mainCamera.updateMatrixWorld();
-		this.mesh.updateMatrixWorld();
-		this.targetPortal.mesh.updateMatrixWorld();
+		this.object().updateMatrixWorld();
+		this.targetPortal.object().updateMatrixWorld();
 
 		const cameraPos = mainCamera.getWorldPosition(new THREE.Vector3());
-		const relativePos = this.targetPortal.mesh.worldToLocal(cameraPos);
+		const relativePos = this.targetPortal.object().worldToLocal(cameraPos);
 		relativePos.applyQuaternion(cameraRot);
-		this.portalCamera.position.copy(this.mesh.localToWorld(relativePos.clone()));
+		this.portalCamera.position.copy(this.object().localToWorld(relativePos.clone()));
 
-		let relativeRot = this.targetPortal.mesh.getWorldQuaternion(new THREE.Quaternion())
+		let relativeRot = this.targetPortal.object().getWorldQuaternion(new THREE.Quaternion())
 			.invert()
 			.multiply(mainCamera.getWorldQuaternion(new THREE.Quaternion()));
-		// relativeRot = new THREE.Quaternion().multiplyQuaternions(cameraRot, relativeRot);
-		this.portalCamera.quaternion.copy(relativeRot);
+		relativeRot = new THREE.Quaternion().multiplyQuaternions(cameraRot, relativeRot);
+		this.portalCamera.quaternion.copy(this.object().getWorldQuaternion(new THREE.Quaternion()).multiply(relativeRot));
 
 		renderer.setRenderTarget(renderTarget);
 		renderer.render(scene, this.portalCamera);

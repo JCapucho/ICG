@@ -138,7 +138,7 @@ export class MainState extends AppState {
 	}
 
 	debugChanged(debug: boolean): void {
-		// this.portal1.setDebug(debug, this.scene);
+		this.portal1.setDebug(debug, this.scene);
 		this.portal2.setDebug(debug, this.scene);
 		this.physicsWorld.setDebug(debug, this.scene);
 	}
