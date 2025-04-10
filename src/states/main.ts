@@ -5,7 +5,6 @@ import { Portal } from "../portal";
 import { Application } from "../app";
 import { AppState } from "./state";
 import { Player } from '../player';
-import { RapierDebugRenderer } from '../utils/rapierDebugRender';
 import { PhysicsWorld } from '../physicsWorld';
 
 function textureRepeat(texture: THREE.Texture) {
@@ -100,6 +99,7 @@ export class MainState extends AppState {
 		// Create a cuboid collider attached to the dynamic rigidBody.
 		const [vertices, indices] = buildPlaneVertices(25, 25);
 		let colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+		// @ts-ignore: TS6133
 		let collider = this.physicsWorld.rapierWorld.createCollider(colliderDesc);
 
 		this.scene.add(this.plane);

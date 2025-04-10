@@ -33,9 +33,9 @@ export class Application {
 		this.renderer.toneMapping = THREE.NeutralToneMapping;
 		this.container.appendChild(this.renderer.domElement);
 
-		this.rgbeLoader = new RGBELoader().setPath("public/");
-		this.textureLoader = new THREE.TextureLoader().setPath("public/");
-		this.gltfLoader = new GLTFLoader().setPath("public/");
+		this.rgbeLoader = new RGBELoader().setPath(import.meta.env.BASE_URL);
+		this.textureLoader = new THREE.TextureLoader().setPath(import.meta.env.BASE_URL);
+		this.gltfLoader = new GLTFLoader().setPath(import.meta.env.BASE_URL);
 		this.rapier = rapier;
 
 		this.clock = new THREE.Clock();

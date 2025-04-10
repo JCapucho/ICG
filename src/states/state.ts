@@ -3,8 +3,8 @@ import * as THREE from 'three';
 export abstract class AppState {
 	abstract render(delta: number, renderer: THREE.WebGLRenderer): void;
 
-	resize(width: number, height: number): void { };
+	resize(_width: number, _height: number): void { };
 
-	debugChanged(debug: boolean): void { };
+	debugChanged(_debug: boolean): void { };
 	debugUpdate(): void { };
 }

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/stats": "^0.16.30",
     "@types/three": "^0.173.0",
     "stats.js": "^0.17.0",
     "typescript": "~5.7.2",
