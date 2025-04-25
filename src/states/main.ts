@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 
-import { Portal } from "../portal";
+import { Portal } from "../portal/portal";
 import { Application } from "../app";
 import { AppState } from "./state";
 import { Player } from '../player';
@@ -126,6 +126,9 @@ export class MainState extends AppState {
 	resize(width: number, height: number) {
 		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
+
+		this.portal1.resize(width, height);
+		this.portal2.resize(width, height);
 	}
 
 	render(delta: number, renderer: THREE.WebGLRenderer): void {

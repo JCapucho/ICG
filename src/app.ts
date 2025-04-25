@@ -28,7 +28,7 @@ export class Application {
 		this.container = container;
 		this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
-			powerPreference: "high-performance"
+			powerPreference: "high-performance",
 		});
 		this.renderer.toneMapping = THREE.NeutralToneMapping;
 		this.container.appendChild(this.renderer.domElement);
