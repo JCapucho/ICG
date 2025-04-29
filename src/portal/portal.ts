@@ -8,8 +8,6 @@ const noPortalTexture = new THREE.MeshBasicMaterial({
 	color: "#ffffff"
 });
 
-const maxPortalResolution = 1024;
-
 const cameraRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
 
 export class Portal {
@@ -166,12 +164,9 @@ export class Portal {
 	}
 
 	public resize(width: number, height: number) {
-		this.renderTgt.width = width;
-		this.renderTgt.height = height;
+		// this.renderTgt.setSize(width, height);
+		// this.drawTgt.setSize(width, height);
 
-		this.drawTgt.width = width;
-		this.drawTgt.height = height;
-		
 		this.material.uniforms.u_resolution.value = new THREE.Vector2(width, height);
 
 		this.portalCamera.aspect = width / height;

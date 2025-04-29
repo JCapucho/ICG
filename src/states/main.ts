@@ -6,6 +6,10 @@ import { Application } from "../app";
 import { AppState } from "./state";
 import { Player } from '../player';
 import { PhysicsWorld } from '../physicsWorld';
+import { PlaneObject } from '../objects/plane';
+
+import levelData from "./level.json";
+import { PortalManager } from '../portal/portalManager';
 
 function textureRepeat(texture: THREE.Texture) {
 	texture.wrapS = THREE.RepeatWrapping;
@@ -27,47 +31,16 @@ function loadTiles107Material(app: Application): THREE.Material {
 	});
 }
 
-function buildPlaneVertices(x: number, z: number): [Float32Array, Uint32Array] {
-	const vertices = new Float32Array(3 * 4);
-	vertices[0] = -x;
-	vertices[1] = 0;
-	vertices[2] = -z;
-
-	vertices[3] = x;
-	vertices[4] = 0;
-	vertices[5] = -z;
-
-	vertices[6] = x;
-	vertices[7] = 0;
-	vertices[8] = z;
-
-	vertices[9] = -x;
-	vertices[10] = 0;
-	vertices[11] = z;
-
-	const indices = new Uint32Array(6);
-
-	indices[0] = 0;
-	indices[1] = 1;
-	indices[2] = 2;
-	indices[3] = 2;
-	indices[4] = 3;
-	indices[5] = 0;
-
-	return [vertices, indices];
-}
-
 export class MainState extends AppState {
-	private plane: THREE.Mesh;
-
 	public scene: THREE.Scene;
 	public camera: THREE.PerspectiveCamera;
 
 	private tileMaterial: THREE.Material;
 
 	private player: Player;
-	private portal1: Portal;
-	private portal2: Portal;
+	// private portal1: Portal;
+	// private portal2: Portal;
+	private portalManager: PortalManager;
 
 	private physicsWorld: PhysicsWorld;
 
@@ -91,31 +64,25 @@ export class MainState extends AppState {
 			});
 		this.tileMaterial = loadTiles107Material(app);
 
-
-		const geometry = new THREE.PlaneGeometry(50, 50);
-		this.plane = new THREE.Mesh(geometry, this.tileMaterial);
-		this.plane.rotation.x = -Math.PI / 2;
-
-		// Create a cuboid collider attached to the dynamic rigidBody.
-		const [vertices, indices] = buildPlaneVertices(25, 25);
-		let colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
-		// @ts-ignore: TS6133
-		let collider = this.physicsWorld.rapierWorld.createCollider(colliderDesc);
-
-		this.scene.add(this.plane);
+		for (const plane of levelData["planes"]) {
+			const obj = new PlaneObject(plane, this.tileMaterial, this.scene, this.physicsWorld);
+		}
 
 		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
-		this.portal1 = new Portal(this.scene, app.renderer, 2, 5);
-		this.portal2 = new Portal(this.scene, app.renderer, 2, 5);
+		// this.portal1 = new Portal(this.scene, app.renderer, 2, 5);
+		// this.portal2 = new Portal(this.scene, app.renderer, 2, 5);
+		//
+		// this.portal1.setTargetPortal(this.portal2);
+		// this.portal2.setTargetPortal(this.portal1);
+		//
+		// this.portal1.object().position.z = -5;
+		// this.portal1.object().position.y = 2.5;
+		//
+		// this.portal2.object().position.z = 5;
+		// this.portal2.object().position.y = 2.5;
+		// this.portal2.object().rotation.y = Math.PI;
 
-		this.portal1.setTargetPortal(this.portal2);
-		this.portal2.setTargetPortal(this.portal1);
-
-		this.portal1.object().position.y = 2.5;
-
-		this.portal2.object().position.z = 10;
-		this.portal2.object().position.y = 2.5;
-		this.portal2.object().rotation.y = Math.PI;
+		this.portalManager = new PortalManager(this.scene, app.renderer);
 
 		// Physics update
 		this.physicsWorld.start((delta) => {
@@ -127,22 +94,21 @@ export class MainState extends AppState {
 		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
 
-		this.portal1.resize(width, height);
-		this.portal2.resize(width, height);
+		// this.portal1.resize(width, height);
+		// this.portal2.resize(width, height);
 	}
 
 	render(delta: number, renderer: THREE.WebGLRenderer): void {
+		renderer.clearStencil();
+
 		this.player.update(delta);
 
-		this.portal1.render(this.scene, this.camera, renderer);
-		this.portal2.render(this.scene, this.camera, renderer);
-
-		renderer.render(this.scene, this.camera);
+		this.portalManager.render(this.scene, this.camera, renderer);
 	}
 
 	debugChanged(debug: boolean): void {
-		this.portal1.setDebug(debug, this.scene);
-		this.portal2.setDebug(debug, this.scene);
+		// this.portal1.setDebug(debug, this.scene);
+		// this.portal2.setDebug(debug, this.scene);
 		this.physicsWorld.setDebug(debug, this.scene);
 	}
 
