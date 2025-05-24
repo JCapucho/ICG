@@ -106,7 +106,7 @@ export class PlayerPhysics {
 	}
 }
 
-export class Player implements PortalableObject {
+export class Player extends PortalableObject {
 	private rootScene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
 
@@ -133,7 +133,9 @@ export class Player implements PortalableObject {
 	private forwardsVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 	private rightVector: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
 
-	constructor(app: Application, scene: THREE.Scene, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
+	constructor(app: Application, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
+		super();
+
 		// Create a scene for the player
 		this.rootScene = new THREE.Scene();
 
@@ -151,8 +153,21 @@ export class Player implements PortalableObject {
 		// Load the model for the player
 		app.gltfLoader.load("Models/Character_Animated.glb", (gltf) => {
 			// Set the model to only render on the player layer
-			gltf.scene.traverse(function(object) {
+			gltf.scene.traverse((object) => {
 				object.layers.set(PLAYER_LAYER);
+
+				if (object instanceof THREE.Mesh) {
+					object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
+						if (!this.isInsidePortal())
+							return;
+
+						material.clippingPlanes = this.currentClippingPlanes;
+					};
+
+					object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
+						material.clippingPlanes = [];
+					};
+				}
 			});
 
 			// Store the animation data
@@ -170,9 +185,6 @@ export class Player implements PortalableObject {
 			// Add the model to the player scene
 			this.rootScene.add(gltf.scene);
 		});
-
-		// Add the player to the scene
-		scene.add(this.rootScene);
 
 		// Handle input
 		document.addEventListener("keydown", (ev) => this.onKeyChange(ev, true));
@@ -270,6 +282,10 @@ export class Player implements PortalableObject {
 		this.rootScene.position.copy(this.playerPhysics.interpolatePosition(delta));
 
 		this.updateAnimations(delta);
+	}
+
+	get3DObject(): THREE.Object3D {
+		return this.rootScene;
 	}
 
 	getPosition(): THREE.Vector3 {

@@ -77,14 +77,14 @@ export class PortalManager {
 		this.portals[0].mesh.position.z = -5;
 		this.portals[0].mesh.position.y = 2.5;
 		this.portals[0].setAttachedObject(objs[2]);
-		this.portals[0].updateCollider();
+		this.portals[0].updatePositions();
 
 		this.portals[1] = new Portal(material2, portalWidth, portalHeight, physics);
 		this.portals[1].mesh.position.z = 3; // 5;
 		this.portals[1].mesh.position.y = 2.5;
 		this.portals[1].mesh.rotation.y = Math.PI / 2;
 		this.portals[1].setAttachedObject(objs[1]);
-		this.portals[1].updateCollider();
+		this.portals[1].updatePositions();
 
 		this.portals[0].otherPortal = this.portals[1];
 		this.portals[1].otherPortal = this.portals[0];
@@ -147,9 +147,7 @@ export class PortalManager {
 			const portal = this.portals[i];
 			const outPortal = this.portals[(i + 1) % this.portals.length];
 
-			const normal = outPortal.mesh.getWorldDirection(new THREE.Vector3());
-			const point = outPortal.mesh.getWorldPosition(new THREE.Vector3());
-			const clipPlane = new THREE.Plane(normal, -normal.dot(point));
+			const clipPlane = outPortal.getClippingPlane();
 
 			// START draw portal
 			context.stencilFunc(context.EQUAL, recursionLevel, 0b11111111);

@@ -66,8 +66,10 @@ export class MainState extends AppState {
 			objs.push(obj);
 		}
 
-		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
 		this.portalManager = new PortalManager(app.renderer, this.physicsWorld, objs);
+
+		this.player = new Player(app, this.physicsWorld, this.camera);
+		this.scene.add(this.player.get3DObject());
 	}
 
 	resize(width: number, height: number) {

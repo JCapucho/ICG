@@ -139,6 +139,7 @@ export class Portal {
 	private playerInPortal: boolean = false;
 	private travellingObjects: PortalableObject[] = [];
 	private teleportRef: THREE.Vector3 = new THREE.Vector3();
+	private clippingPlane: THREE.Plane = new THREE.Plane();
 
 	constructor(material: THREE.Material, width: number, height: number, physics: PhysicsWorld) {
 		this.planeGeometry = new THREE.PlaneGeometry(width, height);
@@ -168,10 +169,10 @@ export class Portal {
 		this.frame[2] = physics.rapierWorld.createCollider(capDesc);
 		this.frame[3] = physics.rapierWorld.createCollider(capDesc);
 
-		this.updateCollider();
+		this.updatePositions();
 	}
 
-	updateCollider() {
+	updatePositions() {
 		const pos = this.mesh.getWorldPosition(this.teleportRef);
 		const rot = this.mesh.getWorldQuaternion(new THREE.Quaternion());
 
@@ -192,6 +193,9 @@ export class Portal {
 
 		this.frame[3].setTranslation(up.clone().multiplyScalar(-this.half_height - 0.1).add(pos));
 		this.frame[3].setRotation(rot);
+
+		const normal = this.mesh.getWorldDirection(this.clippingPlane.normal);
+		this.clippingPlane.constant = -normal.dot(this.teleportRef);
 	}
 
 	physicsUpdate() {
@@ -232,6 +236,8 @@ export class Portal {
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
 
+		otherUserData.portalable.enteredPortal(this);
+
 		this.attachedObject.collider.setCollisionGroups(portalAttachedObjectCollisionGroups);
 		other.setCollisionGroups(portalTravellingObjectCollisionGroups);
 
@@ -254,6 +260,8 @@ export class Portal {
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
 
+		otherUserData.portalable.exitedPortal(this);
+
 		this.attachedObject.collider.setCollisionGroups(defaultCollisionGroup);
 		other.setCollisionGroups(defaultCollisionGroup);
 
@@ -265,6 +273,10 @@ export class Portal {
 			return;
 
 		this.playerInPortal = false;
+	}
+
+	getClippingPlane(): THREE.Plane {
+		return this.clippingPlane;
 	}
 
 	setAttachedObject(obj: GameObject) {
