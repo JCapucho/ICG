@@ -1,26 +1,28 @@
 import * as THREE from 'three';
 import { SCENE_LAYER, PLAYER_LAYER } from '../app';
 
+import { Portal, halfTurn } from './portal';
+import { PhysicsWorld } from '../physicsWorld';
+import { GameObject } from '../objects/gameObject';
+
 import fullscreenTriangleVertexShader from "./fullscreenTriangle.vert?raw";
 
 const maxRecursion = 3;
 
-const portalReorientantionQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
-
-function calculateCameraPosition(
+export function calculateCameraPosition(
 	cameraPos: THREE.Vector3,
 	inPortal: THREE.Object3D,
 	outPortal: THREE.Object3D
 ): THREE.Vector3 {
 	const relativePos = inPortal.worldToLocal(cameraPos);
-	relativePos.applyQuaternion(portalReorientantionQuaternion);
+	relativePos.applyQuaternion(halfTurn);
 	return outPortal.localToWorld(relativePos);
 }
 
 const inPortalRotStorage = new THREE.Quaternion();
 const outPortalRotStorage = new THREE.Quaternion();
 
-function calculateCameraRotation(
+export function calculateCameraRotation(
 	cameraRot: THREE.Quaternion,
 	inPortal: THREE.Object3D,
 	outPortal: THREE.Object3D
@@ -28,37 +30,64 @@ function calculateCameraRotation(
 	let relativeRot = inPortal.getWorldQuaternion(inPortalRotStorage)
 		.invert()
 		.multiply(cameraRot);
-	relativeRot.premultiply(portalReorientantionQuaternion);
+	relativeRot.premultiply(halfTurn);
 	const portalRot = outPortal.getWorldQuaternion(outPortalRotStorage);
 	return relativeRot.premultiply(portalRot);
 }
 
+function createFullscreenTriangleGeometry(): THREE.BufferGeometry {
+	const vertices = new Float32Array(6);
+	vertices[0] = -1.0;
+	vertices[1] = -1.0;
+
+	vertices[2] = 3.0;
+	vertices[3] = -1.0;
+
+	vertices[4] = -1.0;
+	vertices[5] = 3.0;
+	const fullscreenTriangleGeometry = new THREE.BufferGeometry();
+	fullscreenTriangleGeometry.setAttribute(
+		"position",
+		new THREE.BufferAttribute(vertices, 2)
+	);
+	return fullscreenTriangleGeometry;
+}
+
+const portalWidth = 2;
+const portalHeight = 5;
+const material1 = new THREE.MeshBasicMaterial({
+	color: "#ff0000"
+});
+const material2 = new THREE.MeshBasicMaterial({
+	color: "#00ff00"
+});
+
+
 export class PortalManager {
-	private portals: THREE.Mesh[];
+	private portals: Portal[];
 
 	private fullscreenTriangle: THREE.Mesh;
 	private fullscreenTriangleMaterial: THREE.Material;
 
 	private portalCamera: THREE.PerspectiveCamera;
 
-	constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
-		const geometry = new THREE.PlaneGeometry(2, 5);
-		const material1 = new THREE.MeshBasicMaterial({
-			color: "#ff0000"
-		});
-		const material2 = new THREE.MeshBasicMaterial({
-			color: "#00ff00"
-		});
-
+	constructor(renderer: THREE.WebGLRenderer, physics: PhysicsWorld, objs: GameObject[]) {
 		this.portals = new Array(2);
-		this.portals[0] = new THREE.Mesh(geometry, material1);
-		this.portals[0].position.z = -5;
-		this.portals[0].position.y = 2.5;
+		this.portals[0] = new Portal(material1, portalWidth, portalHeight, physics);
+		this.portals[0].mesh.position.z = -5;
+		this.portals[0].mesh.position.y = 2.5;
+		this.portals[0].setAttachedObject(objs[2]);
+		this.portals[0].updateCollider();
 
-		this.portals[1] = new THREE.Mesh(geometry, material2);
-		this.portals[1].position.z = 5;
-		this.portals[1].position.y = 2.5;
-		this.portals[1].rotation.y = Math.PI;
+		this.portals[1] = new Portal(material2, portalWidth, portalHeight, physics);
+		this.portals[1].mesh.position.z = 3; // 5;
+		this.portals[1].mesh.position.y = 2.5;
+		this.portals[1].mesh.rotation.y = Math.PI / 2;
+		this.portals[1].setAttachedObject(objs[1]);
+		this.portals[1].updateCollider();
+
+		this.portals[0].otherPortal = this.portals[1];
+		this.portals[1].otherPortal = this.portals[0];
 
 		const rtSize = new THREE.Vector2();
 		renderer.getSize(rtSize);
@@ -84,21 +113,11 @@ export class PortalManager {
 			vertexShader: fullscreenTriangleVertexShader
 		});
 
-		const vertices = new Float32Array(6);
-		vertices[0] = -1.0;
-		vertices[1] = -1.0;
-
-		vertices[2] = 3.0;
-		vertices[3] = -1.0;
-
-		vertices[4] = -1.0;
-		vertices[5] = 3.0;
-  		const fullscreenTriangleGeometry = new THREE.BufferGeometry();
-		fullscreenTriangleGeometry.setAttribute(
-			"position",
-			new THREE.BufferAttribute(vertices, 2)
+		const fullscreenTriangleGeometry = createFullscreenTriangleGeometry();
+		this.fullscreenTriangle = new THREE.Mesh(
+			fullscreenTriangleGeometry,
+			this.fullscreenTriangleMaterial
 		);
-		this.fullscreenTriangle = new THREE.Mesh(fullscreenTriangleGeometry, this.fullscreenTriangleMaterial);
 	}
 
 	private renderRecursive(
@@ -128,8 +147,8 @@ export class PortalManager {
 			const portal = this.portals[i];
 			const outPortal = this.portals[(i + 1) % this.portals.length];
 
-			const normal = outPortal.getWorldDirection(new THREE.Vector3());
-			const point = outPortal.getWorldPosition(new THREE.Vector3());
+			const normal = outPortal.mesh.getWorldDirection(new THREE.Vector3());
+			const point = outPortal.mesh.getWorldPosition(new THREE.Vector3());
 			const clipPlane = new THREE.Plane(normal, -normal.dot(point));
 
 			// START draw portal
@@ -139,7 +158,7 @@ export class PortalManager {
 			context.enable(context.POLYGON_OFFSET_FILL);
 			context.polygonOffset(-1, -1);
 
-			renderer.render(portal, camera);
+			portal.render(renderer, camera, recursionLevel == 0);
 
 			context.disable(context.POLYGON_OFFSET_FILL);
 			// END draw portal
@@ -154,8 +173,10 @@ export class PortalManager {
 			context.depthRange(0, 1);
 			// END clear depth inside portal
 
-			this.portalCamera.position.copy(calculateCameraPosition(cameraPos.clone(), portal, outPortal));
-			this.portalCamera.quaternion.copy(calculateCameraRotation(cameraRot.clone(), portal, outPortal));
+			this.portalCamera.position.copy(
+				calculateCameraPosition(cameraPos.clone(), portal.mesh, outPortal.mesh));
+			this.portalCamera.quaternion.copy(
+				calculateCameraRotation(cameraRot.clone(), portal.mesh, outPortal.mesh));
 
 			renderer.clippingPlanes = [clipPlane];
 
@@ -178,7 +199,7 @@ export class PortalManager {
 	render(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer) {
 		camera.updateMatrixWorld();
 		for (const portal of this.portals) {
-			portal.updateMatrixWorld();
+			portal.mesh.updateMatrixWorld();
 		}
 
 		const context = renderer.getContext();
@@ -190,90 +211,18 @@ export class PortalManager {
 
 		this.renderRecursive(0, scene, camera, renderer);
 
-		// // Draw portal 1
-		// for (let recursionLevel = 0; recursionLevel < 1; recursionLevel++) {
-		// 	const normal = this.portal2.getWorldDirection(new THREE.Vector3());
-		// 	const point = this.portal2.getWorldPosition(new THREE.Vector3());
-		// 	const clipPlane = new THREE.Plane(normal, -normal.dot(point));
-		//
-		// 	context.stencilFunc(context.ALWAYS, recursionLevel * 2 + 1, 0b11111111);
-		// 	context.stencilOp(context.KEEP, context.KEEP, context.REPLACE);
-		// 	// Depth bias to separate from any wall
-		// 	context.enable(context.POLYGON_OFFSET_FILL);
-		// 	context.polygonOffset(-1, -1);
-		//
-		// 	renderer.render(this.portal1, camera);
-		//
-		// 	renderer.clearDepth();
-		//
-		// 	// Update camera perspective
-		// 	const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-		// 	const cameraRot = camera.getWorldQuaternion(new THREE.Quaternion())
-		// 	this.portalCamera.position.copy(calculateCameraPosition(cameraPos, this.portal1, this.portal2));
-		// 	this.portalCamera.quaternion.copy(calculateCameraRotation(cameraRot, this.portal1, this.portal2));
-		//
-		// 	// Disable depth bias
-		// 	context.disable(context.POLYGON_OFFSET_FILL);
-		// 	context.stencilOp(context.KEEP, context.KEEP, context.KEEP);
-		// 	context.stencilFunc(context.EQUAL, recursionLevel * 2 + 1, 0b11111111);
-		//
-		// 	renderer.clippingPlanes = [clipPlane];
-		//
-		// 	renderer.render(scene, this.portalCamera);
-		//
-		// 	context.stencilOp(context.KEEP, context.KEEP, context.INCR);
-		// 	// Depth bias to separate from any wall
-		// 	context.enable(context.POLYGON_OFFSET_FILL);
-		// 	context.polygonOffset(-1, -1);
-		// 	renderer.render(this.portal1, this.portalCamera);
-		// 	renderer.render(this.portal2, this.portalCamera);
-		//
-		// 	renderer.clippingPlanes = [];
-		// }
-		//
-		// // Draw portal 2
-		// for (let recursionLevel = 0; recursionLevel < 1; recursionLevel++) {
-		// 	const normal = this.portal1.getWorldDirection(new THREE.Vector3());
-		// 	const point = this.portal1.getWorldPosition(new THREE.Vector3());
-		// 	const clipPlane = new THREE.Plane(normal, -normal.dot(point));
-		//
-		// 	context.stencilFunc(context.ALWAYS, recursionLevel * 2 + 2, 0b11111111);
-		// 	context.stencilOp(context.KEEP, context.KEEP, context.REPLACE);
-		// 	// Depth bias to separate from any wall
-		// 	context.enable(context.POLYGON_OFFSET_FILL);
-		// 	context.polygonOffset(-1, -1);
-		//
-		// 	renderer.render(this.portal2, camera);
-		//
-		// 	renderer.clearDepth();
-		//
-		// 	// Update camera perspective
-		// 	const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-		// 	const cameraRot = camera.getWorldQuaternion(new THREE.Quaternion())
-		// 	this.portalCamera.position.copy(calculateCameraPosition(cameraPos, this.portal2, this.portal1));
-		// 	this.portalCamera.quaternion.copy(calculateCameraRotation(cameraRot, this.portal2, this.portal1));
-		//
-		// 	// Disable depth bias
-		// 	context.disable(context.POLYGON_OFFSET_FILL);
-		// 	context.stencilOp(context.KEEP, context.KEEP, context.KEEP);
-		// 	context.stencilFunc(context.EQUAL, recursionLevel * 2 + 2, 0b11111111);
-		//
-		// 	renderer.clippingPlanes = [clipPlane];
-		//
-		// 	renderer.render(scene, this.portalCamera);
-		//
-		// 	// context.stencilOp(context.KEEP, context.KEEP, context.INCR);
-		// 	// Depth bias to separate from any wall
-		// 	context.enable(context.POLYGON_OFFSET_FILL);
-		// 	context.polygonOffset(-1, -1);
-		// 	renderer.render(this.portal1, this.portalCamera);
-		// 	renderer.render(this.portal2, this.portalCamera);
-		//
-		// 	renderer.clippingPlanes = [];
-		// }
-
 		context.disable(context.STENCIL_TEST);
 
 		renderer.autoClear = true;
+	}
+
+	resize(width: number, height: number) {
+		this.portalCamera.aspect = width / height;
+		this.portalCamera.updateProjectionMatrix();
+	}
+
+	physicsUpdate() {
+		for (const portal of this.portals)
+			portal.physicsUpdate();
 	}
 }

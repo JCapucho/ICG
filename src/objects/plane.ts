@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 
 import { PhysicsWorld } from '../physicsWorld';
+import { GameObject } from './gameObject';
 
 function buildPlaneUVs(x: number, y: number): THREE.BufferAttribute {
 	const uvArray = new Float32Array(8);
@@ -56,10 +57,7 @@ interface PlaneOptions {
 	uvScale: number
 }
 
-export class PlaneObject {
-	private mesh: THREE.Mesh;
-	private collider: RAPIER.Collider;
-
+export class PlaneObject extends GameObject {
 	constructor(
 		options: PlaneOptions,
 		material: THREE.Material,
@@ -67,15 +65,15 @@ export class PlaneObject {
 		physicsWorld: PhysicsWorld
 	) {
 		const geometry = new THREE.PlaneGeometry(options.width, options.height);
-		this.mesh = new THREE.Mesh(geometry, material);
+		const mesh = new THREE.Mesh(geometry, material);
 
-		this.mesh.position.x = options.position[0];
-		this.mesh.position.y = options.position[1];
-		this.mesh.position.z = options.position[2];
+		mesh.position.x = options.position[0];
+		mesh.position.y = options.position[1];
+		mesh.position.z = options.position[2];
 
-		this.mesh.rotation.x = options.rotation[0] * Math.PI;
-		this.mesh.rotation.y = options.rotation[1] * Math.PI;
-		this.mesh.rotation.z = options.rotation[2] * Math.PI;
+		mesh.rotation.x = options.rotation[0] * Math.PI;
+		mesh.rotation.y = options.rotation[1] * Math.PI;
+		mesh.rotation.z = options.rotation[2] * Math.PI;
 
 		geometry.setAttribute("uv", buildPlaneUVs(
 			options.width * options.uvScale,
@@ -86,10 +84,10 @@ export class PlaneObject {
 		const [vertices, indices] = buildPlaneColliderVertices(options.width / 2, options.height / 2);
 		let colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
 		// @ts-ignore: TS6133
-		this.collider = physicsWorld.rapierWorld.createCollider(colliderDesc);
-		this.collider.setTranslation(this.mesh.position);
-		this.collider.setRotation(new THREE.Quaternion().setFromEuler(this.mesh.rotation));
+		const collider = physicsWorld.rapierWorld.createCollider(colliderDesc);
+		collider.setTranslation(mesh.position);
+		collider.setRotation(new THREE.Quaternion().setFromEuler(mesh.rotation));
 
-		scene.add(this.mesh);
+		super(mesh, collider, scene);
 	}
 }

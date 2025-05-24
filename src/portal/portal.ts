@@ -1,175 +1,288 @@
 import * as THREE from 'three';
-import { SCENE_LAYER, PLAYER_LAYER } from '../app';
+import RAPIER from "@dimforge/rapier3d";
+import { isPlayer, isPortalable, PhysicsWorld } from '../physicsWorld';
+import { GameObject } from '../objects/gameObject';
+import { calculateCameraPosition, calculateCameraRotation } from './portalManager';
+import { PortalableObject } from './portalableObject';
 
-import vertexShader from "./portal.vert?raw";
-import fragmentShader from "./portal.frag?raw";
 
-const noPortalTexture = new THREE.MeshBasicMaterial({
-	color: "#ffffff"
-});
+function createCollisionGroups(membership: number, mask: number): number {
+	return membership << 16 | mask;
+}
 
-const cameraRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
+// Collision groups:
+// 1 (bit 0) - Normal geometry
+// 2 (bit 1) - Portal geometry
+// 4 (bit 2) - Geometry passing through portals
+const portalAttachedObjectCollisionGroups = createCollisionGroups(1 << 1, 1);
+const portalTravellingObjectCollisionGroups = createCollisionGroups(1 << 2, 1);
+
+const defaultCollisionGroup = createCollisionGroups(0xffff, 0xffff);
+
+function createPortalBoxGeometry(width: number, height: number): THREE.BufferGeometry {
+	const half_width = width / 2;
+	const half_heigth = height / 2;
+
+	const Z = 2;
+
+	const vertices = new Float32Array(3 * 8);
+	vertices[0] = -half_width;
+	vertices[1] = half_heigth;
+	vertices[2] = 0;
+
+	vertices[3] = half_width;
+	vertices[4] = half_heigth;
+	vertices[5] = 0;
+
+	vertices[6] = half_width;
+	vertices[7] = -half_heigth;
+	vertices[8] = 0;
+
+	vertices[9] = -half_width;
+	vertices[10] = -half_heigth;
+	vertices[11] = 0;
+
+	vertices[12] = -half_width;
+	vertices[13] = half_heigth;
+	vertices[14] = -Z;
+
+	vertices[15] = half_width;
+	vertices[16] = half_heigth;
+	vertices[17] = -Z;
+
+	vertices[18] = half_width;
+	vertices[19] = -half_heigth;
+	vertices[20] = -Z;
+
+	vertices[21] = -half_width;
+	vertices[22] = -half_heigth;
+	vertices[23] = -Z;
+
+	const indices = new Uint32Array(36);
+
+	// Portal entrance face
+	indices[0] = 0;
+	indices[1] = 3;
+	indices[2] = 1;
+	indices[3] = 1;
+	indices[4] = 3;
+	indices[5] = 2;
+
+	// Inner portal box faces (all rendered inwards)
+
+	// Bottom
+	indices[6] = 3;
+	indices[7] = 2;
+	indices[8] = 7;
+	indices[9] = 7;
+	indices[10] = 2;
+	indices[11] = 6;
+
+	// Top
+	indices[12] = 0;
+	indices[13] = 4;
+	indices[14] = 1;
+	indices[15] = 1;
+	indices[16] = 4;
+	indices[17] = 5;
+
+	// Left
+	indices[18] = 0;
+	indices[19] = 3;
+	indices[20] = 4;
+	indices[21] = 4;
+	indices[22] = 3;
+	indices[23] = 7;
+
+	// Right
+	indices[24] = 1;
+	indices[25] = 5;
+	indices[26] = 2;
+	indices[27] = 2;
+	indices[28] = 5;
+	indices[29] = 6;
+
+	// Back
+	indices[30] = 4;
+	indices[31] = 7;
+	indices[32] = 5;
+	indices[33] = 5;
+	indices[34] = 7;
+	indices[35] = 6;
+	const portalBoxGeometry = new THREE.BufferGeometry();
+	portalBoxGeometry.setAttribute(
+		"position",
+		new THREE.BufferAttribute(vertices, 3)
+	);
+	portalBoxGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
+	return portalBoxGeometry;
+}
+
+export const halfTurn = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
 
 export class Portal {
-	private mesh: THREE.Mesh;
-	private material: THREE.ShaderMaterial;
-	private portalCamera: THREE.PerspectiveCamera;
+	private half_width: number;
+	private half_height: number;
 
-	private renderTgt: THREE.WebGLRenderTarget;
-	private drawTgt: THREE.WebGLRenderTarget;
+	public mesh: THREE.Mesh;
+	private planeGeometry: THREE.BufferGeometry;
+	private boxGeometry: THREE.BufferGeometry;
 
-	private cameraHelper: THREE.CameraHelper | null = null;
+	// @ts-ignore: TS6133
+	private sensor: RAPIER.Collider;
+	private frame: RAPIER.Collider[];
+	private rigidbody: RAPIER.RigidBody;
 
-	private targetPortal: Portal | null = null;
+	private attachedObject?: GameObject;
+	public otherPortal?: Portal;
 
-	// Cached allocations
-	private testFrustum: THREE.Frustum = new THREE.Frustum();
-	private projectionMatrix: THREE.Matrix4 = new THREE.Matrix4();
+	private playerInPortal: boolean = false;
+	private travellingObjects: PortalableObject[] = [];
+	private teleportRef: THREE.Vector3 = new THREE.Vector3();
 
-	constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
-		portal_x: number, portal_y: number) {
-		let width_ratio = 1;
-		let height_ratio = 1;
+	constructor(material: THREE.Material, width: number, height: number, physics: PhysicsWorld) {
+		this.planeGeometry = new THREE.PlaneGeometry(width, height);
+		this.boxGeometry = createPortalBoxGeometry(width, height),
+			this.mesh = new THREE.Mesh(this.planeGeometry, material)
 
-		if (portal_x > portal_y) {
-			height_ratio = portal_y / portal_x;
-		} else {
-			width_ratio = portal_x / portal_y;
-		}
+		const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+			.setUserData({
+				onEnter: this.onPortalEnter.bind(this),
+				onExit: this.onPortalExit.bind(this),
+			});
+		this.rigidbody = physics.rapierWorld.createRigidBody(rigidBodyDesc);
 
-		const rtSize = new THREE.Vector2();
-		renderer.getSize(rtSize);
+		this.half_width = width / 2;
+		this.half_height = height / 2;
 
-		const width = rtSize.x;
-		const height = rtSize.y;
+		const colliderDesc = RAPIER.ColliderDesc.cuboid(this.half_width, this.half_height, 0.15)
+			.setSensor(true)
+			.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+		this.sensor = physics.rapierWorld.createCollider(colliderDesc, this.rigidbody);
 
-		this.renderTgt = new THREE.WebGLRenderTarget(width, height);
-		this.drawTgt = new THREE.WebGLRenderTarget(width, height);
+		this.frame = new Array(4);
+		const sideDesc = RAPIER.ColliderDesc.cuboid(0.1, this.half_height + 0.1, 0.2);
+		this.frame[0] = physics.rapierWorld.createCollider(sideDesc);
+		this.frame[1] = physics.rapierWorld.createCollider(sideDesc);
+		const capDesc = RAPIER.ColliderDesc.cuboid(this.half_width + 0.1, 0.1, 0.2);
+		this.frame[2] = physics.rapierWorld.createCollider(capDesc);
+		this.frame[3] = physics.rapierWorld.createCollider(capDesc);
 
-		// Initialize the renderer textures
-		renderer.initRenderTarget(this.renderTgt);
-		renderer.initRenderTarget(this.drawTgt);
-
-		this.material = new THREE.ShaderMaterial({
-			name: "Portal Shader",
-
-			uniforms: {
-				map: { value: this.drawTgt.texture },
-				color: { value: new THREE.Vector3(1, 1, 1) },
-				u_resolution: { value: rtSize },
-			},
-
-			vertexShader,
-			fragmentShader
-		});
-
-		const geometry = new THREE.PlaneGeometry(portal_x, portal_y);
-		this.mesh = new THREE.Mesh(geometry, noPortalTexture);
-		this.mesh.name = "Portal Frame";
-
-		const rtFov = 75;
-		const rtAspect = width / height;
-		const rtNear = 0.1;
-		const rtFar = 1000;
-		this.portalCamera = new THREE.PerspectiveCamera(rtFov, rtAspect, rtNear, rtFar);
-
-		this.portalCamera.layers.enable(SCENE_LAYER);
-		this.portalCamera.layers.enable(PLAYER_LAYER);
-
-		scene.add(this.mesh);
-		scene.add(this.portalCamera);
+		this.updateCollider();
 	}
 
-	public setDebug(debug: boolean, scene: THREE.Scene) {
-		if (debug) {
-			this.cameraHelper = new THREE.CameraHelper(this.portalCamera);
-			scene.add(this.cameraHelper);
-		}
+	updateCollider() {
+		const pos = this.mesh.getWorldPosition(this.teleportRef);
+		const rot = this.mesh.getWorldQuaternion(new THREE.Quaternion());
 
-		if (this.cameraHelper)
-			this.cameraHelper.visible = debug;
+		this.rigidbody.setTranslation(pos, false);
+		this.rigidbody.setRotation(rot, false);
+
+		const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rot)
+		const right = new THREE.Vector3(1, 0, 0).applyQuaternion(rot)
+
+		this.frame[0].setTranslation(right.clone().multiplyScalar(this.half_width + 0.1).add(pos));
+		this.frame[0].setRotation(rot);
+
+		this.frame[1].setTranslation(right.clone().multiplyScalar(-this.half_width - 0.1).add(pos));
+		this.frame[1].setRotation(rot);
+
+		this.frame[2].setTranslation(up.clone().multiplyScalar(this.half_height + 0.1).add(pos));
+		this.frame[2].setRotation(rot);
+
+		this.frame[3].setTranslation(up.clone().multiplyScalar(-this.half_height - 0.1).add(pos));
+		this.frame[3].setRotation(rot);
 	}
 
-	public setTargetPortal(targetPortal: Portal | null) {
-		if (targetPortal) {
-			this.mesh.material = targetPortal.material;
-		} else {
-			this.mesh.material = noPortalTexture;
-		}
-
-		this.targetPortal = targetPortal;
-	}
-
-	public render(scene: THREE.Scene, mainCamera: THREE.Camera, renderer: THREE.WebGLRenderer): void {
-		if (!this.targetPortal)
+	physicsUpdate() {
+		if (!this.otherPortal)
 			return;
 
-		const tgtPortalObject = this.targetPortal.object();
+		for (const traveller of this.travellingObjects) {
+			const pos = traveller.getPosition();
 
-		// Ensure that the matrices of the objects are up to date so that the
-		// transforms don't work with stale data
-		mainCamera.updateMatrixWorld();
-		this.object().updateMatrixWorld();
-		tgtPortalObject.updateMatrixWorld();
+			const direction = pos.clone().sub(this.teleportRef).normalize();
+			const portalForwards = this.mesh.getWorldDirection(new THREE.Vector3());
 
-		this.testFrustum.setFromProjectionMatrix(
-			this.projectionMatrix.multiplyMatrices(
-				mainCamera.projectionMatrix,
-				mainCamera.matrixWorldInverse
-			)
-		);
+			if (direction.dot(portalForwards) < -0.1) {
+				const newPos = calculateCameraPosition(pos, this.mesh, this.otherPortal.mesh);
 
-		if (!this.testFrustum.intersectsObject(tgtPortalObject)) {
-			return;
+				const rot = traveller.getRotation();
+				console.log(new THREE.Euler().setFromQuaternion(rot))
+				const newRot = calculateCameraRotation(rot, this.mesh, this.otherPortal.mesh);
+				console.log(new THREE.Euler().setFromQuaternion(newRot))
+
+				// The object is behind the portal
+				traveller.warp(
+					newPos,
+					newRot
+				);
+			}
 		}
-
-		// Calculate the position of the portal camera by taking the relative
-		// position of the player camera to the target portal.
-		const cameraPos = mainCamera.getWorldPosition(new THREE.Vector3());
-		const relativePos = tgtPortalObject.worldToLocal(cameraPos);
-		relativePos.applyQuaternion(cameraRot);
-		this.portalCamera.position.copy(this.object().localToWorld(relativePos.clone()));
-
-		// Calculate the rotation of the portal camera by taking the relative
-		// rotation of the player camera to the target portal.
-		let relativeRot = tgtPortalObject.getWorldQuaternion(new THREE.Quaternion())
-			.invert()
-			.multiply(mainCamera.getWorldQuaternion(new THREE.Quaternion()));
-		relativeRot.premultiply(cameraRot);
-		const portalRot = this.object().getWorldQuaternion(new THREE.Quaternion());
-		relativeRot.premultiply(portalRot);
-		this.portalCamera.quaternion.copy(relativeRot);
-
-		// Update the clip plane and projection matrix of the camera
-		const normal = this.object().getWorldDirection(new THREE.Vector3());
-		const point = this.object().getWorldPosition(new THREE.Vector3());
-		renderer.clippingPlanes = [new THREE.Plane(normal, -normal.dot(point))]
-
-		this.material.uniforms.color.value = new THREE.Vector3(0, 0, 0);
-
-		renderer.setRenderTarget(this.renderTgt);
-		renderer.render(scene, this.portalCamera);
-
-		renderer.copyFramebufferToTexture(this.drawTgt.texture);
-
-		this.material.uniforms.color.value = new THREE.Vector3(1, 1, 1);
-
-		renderer.clippingPlanes = [];
-
-		renderer.setRenderTarget(null);
 	}
 
-	public object(): THREE.Object3D {
-		return this.mesh;
+	private onPortalEnter(other: RAPIER.Collider, world: PhysicsWorld) {
+		console.log("Portal enter");
+
+		if (!this.attachedObject || !this.otherPortal)
+			return;
+
+		const otherUserData = world.getColliderUserData(other);
+
+		if (!otherUserData || !isPortalable(otherUserData))
+			return;
+
+		this.attachedObject.collider.setCollisionGroups(portalAttachedObjectCollisionGroups);
+		other.setCollisionGroups(portalTravellingObjectCollisionGroups);
+
+		this.travellingObjects.push(otherUserData.portalable);
+
+		if (!isPlayer(otherUserData))
+			return;
+
+		this.playerInPortal = true;
 	}
 
-	public resize(width: number, height: number) {
-		// this.renderTgt.setSize(width, height);
-		// this.drawTgt.setSize(width, height);
+	private onPortalExit(other: RAPIER.Collider, world: PhysicsWorld) {
+		console.log("Portal exit");
 
-		this.material.uniforms.u_resolution.value = new THREE.Vector2(width, height);
+		if (!this.attachedObject)
+			return;
 
-		this.portalCamera.aspect = width / height;
-		this.portalCamera.updateProjectionMatrix();
+		const otherUserData = world.getColliderUserData(other);
+
+		if (!otherUserData || !isPortalable(otherUserData))
+			return;
+
+		this.attachedObject.collider.setCollisionGroups(defaultCollisionGroup);
+		other.setCollisionGroups(defaultCollisionGroup);
+
+		const index = this.travellingObjects.indexOf(otherUserData.portalable)
+		if (index > -1)
+			this.travellingObjects.splice(index, 1);
+
+		if (!isPlayer(otherUserData))
+			return;
+
+		this.playerInPortal = false;
+	}
+
+	setAttachedObject(obj: GameObject) {
+		if (this.attachedObject)
+			this.attachedObject.collider.setCollisionGroups(defaultCollisionGroup);
+
+		this.attachedObject = obj;
+	}
+
+	render(
+		renderer: THREE.WebGLRenderer,
+		camera: THREE.Camera,
+		root: boolean
+	) {
+		if (this.playerInPortal && root)
+			this.mesh.geometry = this.boxGeometry;
+
+		renderer.render(this.mesh, camera);
+		this.mesh.geometry = this.planeGeometry;
 	}
 }

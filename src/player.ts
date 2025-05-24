@@ -3,9 +3,10 @@ import RAPIER from "@dimforge/rapier3d";
 import { clamp } from 'three/src/math/MathUtils.js';
 
 import { Application, SCENE_LAYER, PLAYER_LAYER } from "./app";
-import { PhysicsWorld } from './physicsWorld';
+import { PhysicsWorld, PlayerUserData } from './physicsWorld';
+import { PortalableObject } from './portal/portalableObject';
 
-class PlayerPhysics {
+export class PlayerPhysics {
 	private physicsWorld: PhysicsWorld;
 
 	private collider: RAPIER.Collider;
@@ -20,17 +21,24 @@ class PlayerPhysics {
 	private movementDiff: RAPIER.Vector = RAPIER.VectorOps.zeros();
 	private elapsed: number = 0.0;
 
-	constructor(physicsWorld: PhysicsWorld) {
+	constructor(player: Player, physicsWorld: PhysicsWorld) {
 		this.physicsWorld = physicsWorld;
 
 		const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
-			.setTranslation(0.0, 2.0, 0.0);
+			.setTranslation(0.0, 2.0, 0.0)
+			.setCcdEnabled(true)
+			.setUserData({
+				isPortalable: true,
+				isPlayer: true,
+				portalable: player
+			} satisfies PlayerUserData);
 		this.rigidbody = physicsWorld.rapierWorld.createRigidBody(rigidBodyDesc);
 
 		this.lastPosition = this.rigidbody.translation();
 
-		const colliderDesc = RAPIER.ColliderDesc.capsule(1, 0.5)
-			.setTranslation(0.0, 1.5, 0.0);
+		const colliderDesc = RAPIER.ColliderDesc.cylinder(1.5, 0.5)
+			.setTranslation(0.0, 1.5, 0.0)
+			.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
 		this.collider = physicsWorld.rapierWorld.createCollider(colliderDesc, this.rigidbody);
 
 		// The gap the controller will leave between the character and its environment.
@@ -56,20 +64,25 @@ class PlayerPhysics {
 			movement.z += this.velocity.z * delta;
 		}
 
-		this.characterController.computeColliderMovement(this.collider, movement);
+		this.characterController.computeColliderMovement(
+			this.collider,
+			movement,
+			RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
+			this.collider.collisionGroups()
+		);
 
 		this.grounded = this.characterController.computedGrounded();
 		let tgtPosition = this.characterController.computedMovement();
+
+		this.movementDiff.x = tgtPosition.x;
+		this.movementDiff.y = tgtPosition.y;
+		this.movementDiff.z = tgtPosition.z;
 
 		tgtPosition.x += this.lastPosition.x;
 		tgtPosition.y += this.lastPosition.y;
 		tgtPosition.z += this.lastPosition.z;
 
 		this.rigidbody.setNextKinematicTranslation(tgtPosition);
-
-		this.movementDiff.x = tgtPosition.x - this.lastPosition.x;
-		this.movementDiff.y = tgtPosition.y - this.lastPosition.y;
-		this.movementDiff.z = tgtPosition.z - this.lastPosition.z;
 	}
 
 	interpolatePosition(delta: number): THREE.Vector3 {
@@ -79,13 +92,25 @@ class PlayerPhysics {
 		let pos = new THREE.Vector3(this.movementDiff.x, this.movementDiff.y, this.movementDiff.z);
 		return pos.multiplyScalar(alpha).add(this.lastPosition);
 	}
+
+	warp(pos: RAPIER.Vector3) {
+		this.movementDiff.x = 0;
+		this.movementDiff.y = 0;
+		this.movementDiff.z = 0;
+
+		this.lastPosition.x = pos.x;
+		this.lastPosition.y = pos.y;
+		this.lastPosition.z = pos.z;
+
+		this.rigidbody.setNextKinematicTranslation(pos);
+	}
 }
 
-export class Player {
+export class Player implements PortalableObject {
 	private rootScene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
 
-	private playerPhysics: PlayerPhysics;
+	public playerPhysics: PlayerPhysics;
 
 	private mixer: THREE.AnimationMixer | undefined;
 
@@ -121,7 +146,7 @@ export class Player {
 		this.camera.position.y = 3;
 		this.camera.rotation.y = Math.PI;
 
-		this.playerPhysics = new PlayerPhysics(physicsWorld);
+		this.playerPhysics = new PlayerPhysics(this, physicsWorld);
 
 		// Load the model for the player
 		app.gltfLoader.load("Models/Character_Animated.glb", (gltf) => {
@@ -163,7 +188,10 @@ export class Player {
 	}
 
 	private onPointerMove(event: PointerEvent) {
-		this.rootScene.rotation.y += event.movementX * this.lookSpeed;
+		const euler = new THREE.Euler();
+		euler.y = event.movementX * this.lookSpeed;
+		this.rootScene.applyQuaternion(new THREE.Quaternion().setFromEuler(euler));
+
 		const cameraRot = this.camera.rotation.x - event.movementY * this.lookSpeed;
 		this.camera.rotation.x = clamp(cameraRot, -Math.PI / 2, Math.PI / 2);
 	}
@@ -242,5 +270,18 @@ export class Player {
 		this.rootScene.position.copy(this.playerPhysics.interpolatePosition(delta));
 
 		this.updateAnimations(delta);
+	}
+
+	getPosition(): THREE.Vector3 {
+		return this.rootScene.getWorldPosition(new THREE.Vector3());
+	}
+
+	getRotation(): THREE.Quaternion {
+		return this.rootScene.getWorldQuaternion(new THREE.Quaternion());
+	}
+
+	warp(pos: THREE.Vector3, rot: THREE.Quaternion) {
+		this.playerPhysics.warp(pos);
+		this.rootScene.setRotationFromQuaternion(rot);
 	}
 }

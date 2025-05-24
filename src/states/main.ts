@@ -1,7 +1,5 @@
 import * as THREE from 'three';
-import RAPIER from "@dimforge/rapier3d";
 
-import { Portal } from "../portal/portal";
 import { Application } from "../app";
 import { AppState } from "./state";
 import { Player } from '../player';
@@ -38,8 +36,6 @@ export class MainState extends AppState {
 	private tileMaterial: THREE.Material;
 
 	private player: Player;
-	// private portal1: Portal;
-	// private portal2: Portal;
 	private portalManager: PortalManager;
 
 	private physicsWorld: PhysicsWorld;
@@ -64,55 +60,44 @@ export class MainState extends AppState {
 			});
 		this.tileMaterial = loadTiles107Material(app);
 
+		const objs = [];
 		for (const plane of levelData["planes"]) {
 			const obj = new PlaneObject(plane, this.tileMaterial, this.scene, this.physicsWorld);
+			objs.push(obj);
 		}
 
 		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
-		// this.portal1 = new Portal(this.scene, app.renderer, 2, 5);
-		// this.portal2 = new Portal(this.scene, app.renderer, 2, 5);
-		//
-		// this.portal1.setTargetPortal(this.portal2);
-		// this.portal2.setTargetPortal(this.portal1);
-		//
-		// this.portal1.object().position.z = -5;
-		// this.portal1.object().position.y = 2.5;
-		//
-		// this.portal2.object().position.z = 5;
-		// this.portal2.object().position.y = 2.5;
-		// this.portal2.object().rotation.y = Math.PI;
-
-		this.portalManager = new PortalManager(this.scene, app.renderer);
-
-		// Physics update
-		this.physicsWorld.start((delta) => {
-			this.player.physicsUpdate(delta);
-		});
+		this.portalManager = new PortalManager(app.renderer, this.physicsWorld, objs);
 	}
 
 	resize(width: number, height: number) {
 		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
-
-		// this.portal1.resize(width, height);
-		// this.portal2.resize(width, height);
+		this.portalManager.resize(width, height);
 	}
 
 	render(delta: number, renderer: THREE.WebGLRenderer): void {
 		renderer.clearStencil();
+
+		this.physicsWorld.update(this.physicsUpdate.bind(this));
 
 		this.player.update(delta);
 
 		this.portalManager.render(this.scene, this.camera, renderer);
 	}
 
+	physicsUpdate(delta: number) {
+		this.player.physicsUpdate(delta);
+		this.portalManager.physicsUpdate();
+	}
+
 	debugChanged(debug: boolean): void {
-		// this.portal1.setDebug(debug, this.scene);
-		// this.portal2.setDebug(debug, this.scene);
 		this.physicsWorld.setDebug(debug, this.scene);
+		// this.portalManager.setDebug(debug);
 	}
 
 	debugUpdate(): void {
 		this.physicsWorld.debugUpdate();
+		// this.portalManager.debugUpdate(debug);
 	}
 }
