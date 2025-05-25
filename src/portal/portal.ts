@@ -156,7 +156,7 @@ export class Portal {
 		this.half_width = width / 2;
 		this.half_height = height / 2;
 
-		const colliderDesc = RAPIER.ColliderDesc.cuboid(this.half_width, this.half_height, 0.15)
+		const colliderDesc = RAPIER.ColliderDesc.cuboid(this.half_width, this.half_height, 0.25)
 			.setSensor(true)
 			.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
 		this.sensor = physics.rapierWorld.createCollider(colliderDesc, this.rigidbody);
@@ -212,9 +212,7 @@ export class Portal {
 				const newPos = calculateCameraPosition(pos, this.mesh, this.otherPortal.mesh);
 
 				const rot = traveller.getRotation();
-				console.log(new THREE.Euler().setFromQuaternion(rot))
 				const newRot = calculateCameraRotation(rot, this.mesh, this.otherPortal.mesh);
-				console.log(new THREE.Euler().setFromQuaternion(newRot))
 
 				// The object is behind the portal
 				traveller.warp(
@@ -226,8 +224,6 @@ export class Portal {
 	}
 
 	private onPortalEnter(other: RAPIER.Collider, world: PhysicsWorld) {
-		console.log("Portal enter");
-
 		if (!this.attachedObject || !this.otherPortal)
 			return;
 
@@ -250,8 +246,6 @@ export class Portal {
 	}
 
 	private onPortalExit(other: RAPIER.Collider, world: PhysicsWorld) {
-		console.log("Portal exit");
-
 		if (!this.attachedObject)
 			return;
 
@@ -260,7 +254,7 @@ export class Portal {
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
 
-		otherUserData.portalable.exitedPortal(this);
+		otherUserData.portalable.exitedPortal();
 
 		this.attachedObject.collider.setCollisionGroups(defaultCollisionGroup);
 		other.setCollisionGroups(defaultCollisionGroup);

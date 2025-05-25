@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 import { clamp } from 'three/src/math/MathUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-import { Application, SCENE_LAYER, PLAYER_LAYER } from "./app";
+import { Application, SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from "./app";
 import { PhysicsWorld, PlayerUserData } from './physicsWorld';
 import { PortalableObject } from './portal/portalableObject';
+import { calculateCameraPosition, calculateCameraRotation } from './portal/portalManager';
 
 export class PlayerPhysics {
 	private physicsWorld: PhysicsWorld;
@@ -108,11 +110,13 @@ export class PlayerPhysics {
 
 export class Player extends PortalableObject {
 	private rootScene: THREE.Scene;
+	private duplicateObject: THREE.Object3D | undefined;
 	private camera: THREE.PerspectiveCamera;
 
 	public playerPhysics: PlayerPhysics;
 
 	private mixer: THREE.AnimationMixer | undefined;
+	private animationGroup: THREE.AnimationObjectGroup | undefined;
 
 	private activeAction: THREE.AnimationAction | undefined;
 
@@ -133,7 +137,7 @@ export class Player extends PortalableObject {
 	private forwardsVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 	private rightVector: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
 
-	constructor(app: Application, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
+	constructor(app: Application, scene: THREE.Scene, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
 		super();
 
 		// Create a scene for the player
@@ -141,7 +145,8 @@ export class Player extends PortalableObject {
 
 		// Add the main camera to the player 
 		this.camera = camera;
-		this.camera.layers.set(SCENE_LAYER);
+		this.camera.layers.enable(SCENE_LAYER);
+		this.camera.layers.enable(DUPLICATE_PLAYER_LAYER);
 
 		this.rootScene.add(this.camera);
 
@@ -152,26 +157,28 @@ export class Player extends PortalableObject {
 
 		// Load the model for the player
 		app.gltfLoader.load("Models/Character_Animated.glb", (gltf) => {
-			// Set the model to only render on the player layer
-			gltf.scene.traverse((object) => {
+			const mainObject = gltf.scene;
+			mainObject.traverse(object => {
+				// Set the model to only render on the player layer
 				object.layers.set(PLAYER_LAYER);
-
-				if (object instanceof THREE.Mesh) {
-					object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
-						if (!this.isInsidePortal())
-							return;
-
-						material.clippingPlanes = this.currentClippingPlanes;
-					};
-
-					object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
-						material.clippingPlanes = [];
-					};
-				}
+			});
+			const duplicateObject = SkeletonUtils.clone(gltf.scene);
+			duplicateObject.traverse(object => {
+				// Set the model to only render for the player
+				object.layers.set(DUPLICATE_PLAYER_LAYER);
 			});
 
+			duplicateObject.visible = false;
+
+			this.installModelRenderData(mainObject);
+			this.installModelRenderData(duplicateObject);
+
 			// Store the animation data
-			this.mixer = new THREE.AnimationMixer(gltf.scene);
+			this.animationGroup = new THREE.AnimationObjectGroup(
+				mainObject,
+				duplicateObject
+			);
+			this.mixer = new THREE.AnimationMixer(this.animationGroup);
 
 			// Load the relevant animations
 			const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Idle');
@@ -183,7 +190,12 @@ export class Player extends PortalableObject {
 			this.activeAction = this.idleAction.play();
 
 			// Add the model to the player scene
-			this.rootScene.add(gltf.scene);
+			this.rootScene.add(mainObject);
+
+			scene.add(this.rootScene);
+			scene.add(duplicateObject);
+
+			this.duplicateObject = duplicateObject;
 		});
 
 		// Handle input
@@ -197,6 +209,23 @@ export class Player extends PortalableObject {
 				});
 			}
 		});
+	}
+
+	private installModelRenderData(scene: THREE.Object3D) {
+		scene.traverse((object) => {
+			if (object instanceof THREE.Mesh) {
+				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
+					if (!this.isInsidePortal())
+						return;
+
+					material.clippingPlanes = this.currentClippingPlanes;
+				};
+
+				object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
+					material.clippingPlanes = [];
+				};
+			}
+		})
 	}
 
 	private onPointerMove(event: PointerEvent) {
@@ -281,11 +310,27 @@ export class Player extends PortalableObject {
 	update(delta: number) {
 		this.rootScene.position.copy(this.playerPhysics.interpolatePosition(delta));
 
-		this.updateAnimations(delta);
-	}
+		if (this.duplicateObject) {
+			this.duplicateObject.visible = this.isInsidePortal();
+			if (this.isInsidePortal()) {
+				const cameraPos = this.rootScene.getWorldPosition(new THREE.Vector3());
+				const cameraRot = this.rootScene.getWorldQuaternion(new THREE.Quaternion());
 
-	get3DObject(): THREE.Object3D {
-		return this.rootScene;
+				this.duplicateObject.position.copy(calculateCameraPosition(
+					cameraPos,
+					this.inPortal!.mesh,
+					this.outPortal!.mesh
+				));
+
+				this.duplicateObject.quaternion.copy(calculateCameraRotation(
+					cameraRot,
+					this.inPortal!.mesh,
+					this.outPortal!.mesh
+				));
+			}
+		}
+
+		this.updateAnimations(delta);
 	}
 
 	getPosition(): THREE.Vector3 {

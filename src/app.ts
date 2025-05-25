@@ -9,6 +9,7 @@ import { DebugManager } from './utils/debugManager';
 
 export const SCENE_LAYER = 0;
 export const PLAYER_LAYER = 1;
+export const DUPLICATE_PLAYER_LAYER = 2;
 
 export class Application {
 	public container: HTMLElement;

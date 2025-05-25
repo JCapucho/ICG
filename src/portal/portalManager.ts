@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SCENE_LAYER, PLAYER_LAYER } from '../app';
+import { SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from '../app';
 
 import { Portal, halfTurn } from './portal';
 import { PhysicsWorld } from '../physicsWorld';
@@ -80,9 +80,9 @@ export class PortalManager {
 		this.portals[0].updatePositions();
 
 		this.portals[1] = new Portal(material2, portalWidth, portalHeight, physics);
-		this.portals[1].mesh.position.z = 3; // 5;
+		this.portals[1].mesh.position.z = 5;
 		this.portals[1].mesh.position.y = 2.5;
-		this.portals[1].mesh.rotation.y = Math.PI / 2;
+		this.portals[1].mesh.rotation.y = Math.PI;
 		this.portals[1].setAttachedObject(objs[1]);
 		this.portals[1].updatePositions();
 
@@ -127,6 +127,11 @@ export class PortalManager {
 		renderer: THREE.WebGLRenderer
 	) {
 		camera.updateMatrixWorld();
+
+		if (recursionLevel > 1)
+			this.portalCamera.layers.enable(DUPLICATE_PLAYER_LAYER);
+		else
+			this.portalCamera.layers.disable(DUPLICATE_PLAYER_LAYER);
 
 		const context = renderer.getContext();
 
