@@ -28,12 +28,13 @@ export function isPlayer(userData: PhysicsUserData): userData is PlayerUserData 
 	return userData.isPlayer === true;
 }
 
+// The game loop and interpolation code were derived from: https://www.gafferongames.com/post/fix_your_timestep/
 export class PhysicsWorld {
 	public readonly rapierWorld: RAPIER.World;
 	public readonly tickrate: number;
 
-	private skipTicks: number;
-	private timeSinceLastUpdate: number = 0.0;
+	private dt: number;
+	private accumulator: number = 0.0
 
 	private clock: THREE.Clock;
 	private eventQueue: RAPIER.EventQueue = new RAPIER.EventQueue(true);
@@ -43,29 +44,31 @@ export class PhysicsWorld {
 	constructor(rapierWorld: RAPIER.World, tickrate: number) {
 		this.rapierWorld = rapierWorld;
 		this.tickrate = tickrate;
-		this.skipTicks = 1 / tickrate;
+		this.dt = 1 / tickrate;
 
 		this.clock = new THREE.Clock();
 	}
 
-	update(userUpdate: (delta: number) => void) {
-		while (this.timeSinceLastUpdate > this.skipTicks) {
-			this.physicsUpdate(userUpdate);
-			this.timeSinceLastUpdate = this.clock.getDelta();
-		}
+	public getInterpolationAlpha(): number {
+		return this.accumulator / this.dt;
+	}
 
-		this.timeSinceLastUpdate += this.clock.getDelta();
+	update(userUpdate: (delta: number) => void) {
+		let frameTime = this.clock.getDelta();
+		// Clamp the frame time so that the accumulator doesn't explode
+		if (frameTime > 0.25)
+			frameTime = 0.25;
+
+		this.accumulator += frameTime;
+
+		while (this.accumulator > this.dt) {
+			this.physicsUpdate(userUpdate);
+			this.accumulator -= this.dt;
+		}
 	}
 
 	private physicsUpdate(userUpdate: (delta: number) => void) {
-		const delta = this.timeSinceLastUpdate;
-
-		if (delta < 0.01) {
-			console.log("Skipping physics tick");
-			return;
-		}
-
-		userUpdate(delta);
+		userUpdate(this.dt);
 
 		this.rapierWorld.step(this.eventQueue);
 

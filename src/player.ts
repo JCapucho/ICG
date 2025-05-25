@@ -4,9 +4,10 @@ import { clamp } from 'three/src/math/MathUtils.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 import { Application, SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from "./app";
-import { PhysicsWorld, PlayerUserData } from './physicsWorld';
+import { PhysicsWorld, PlayerUserData } from './physics/physicsWorld';
 import { PortalableObject } from './portal/portalableObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portal/portalManager';
+import { PhysicsInterpolator } from './physics/physicsInterpolator';
 
 export class PlayerPhysics {
 	private physicsWorld: PhysicsWorld;
@@ -16,12 +17,9 @@ export class PlayerPhysics {
 	private characterController: RAPIER.KinematicCharacterController;
 
 	private grounded: boolean = false;
-	private gravity: RAPIER.Vector;
-	private velocity: RAPIER.Vector = RAPIER.VectorOps.zeros();
+	private velocity: RAPIER.Vector3 = RAPIER.VectorOps.zeros();
 
-	private lastPosition: RAPIER.Vector;
-	private movementDiff: RAPIER.Vector = RAPIER.VectorOps.zeros();
-	private elapsed: number = 0.0;
+	public interpolator: PhysicsInterpolator;
 
 	constructor(player: Player, physicsWorld: PhysicsWorld) {
 		this.physicsWorld = physicsWorld;
@@ -36,8 +34,6 @@ export class PlayerPhysics {
 			} satisfies PlayerUserData);
 		this.rigidbody = physicsWorld.rapierWorld.createRigidBody(rigidBodyDesc);
 
-		this.lastPosition = this.rigidbody.translation();
-
 		const colliderDesc = RAPIER.ColliderDesc.cylinder(1.5, 0.5)
 			.setTranslation(0.0, 1.5, 0.0)
 			.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
@@ -49,17 +45,14 @@ export class PlayerPhysics {
 		this.characterController.setApplyImpulsesToDynamicBodies(true);
 		this.characterController.setCharacterMass(1.0);
 
-		this.gravity = physicsWorld.rapierWorld.gravity;
+		this.interpolator = new PhysicsInterpolator(this.rigidbody, physicsWorld);
 	}
 
-	update(delta: number, movement: RAPIER.Vector) {
-		this.lastPosition = this.rigidbody.translation();
-		this.elapsed = 0.0;
-
+	physicsUpdate(delta: number, movement: RAPIER.Vector3) {
 		if (!this.grounded) {
-			this.velocity.x += this.gravity.x * delta;
-			this.velocity.y += this.gravity.y * delta;
-			this.velocity.z += this.gravity.z * delta;
+			this.velocity.x += this.physicsWorld.rapierWorld.gravity.x * delta;
+			this.velocity.y += this.physicsWorld.rapierWorld.gravity.y * delta;
+			this.velocity.z += this.physicsWorld.rapierWorld.gravity.z * delta;
 
 			movement.x += this.velocity.x * delta;
 			movement.y += this.velocity.y * delta;
@@ -74,36 +67,20 @@ export class PlayerPhysics {
 		);
 
 		this.grounded = this.characterController.computedGrounded();
-		let tgtPosition = this.characterController.computedMovement();
 
-		this.movementDiff.x = tgtPosition.x;
-		this.movementDiff.y = tgtPosition.y;
-		this.movementDiff.z = tgtPosition.z;
+		const currentPosition = this.rigidbody.translation();
+		const tgtDestination = this.characterController.computedMovement();
 
-		tgtPosition.x += this.lastPosition.x;
-		tgtPosition.y += this.lastPosition.y;
-		tgtPosition.z += this.lastPosition.z;
+		tgtDestination.x += currentPosition.x;
+		tgtDestination.y += currentPosition.y;
+		tgtDestination.z += currentPosition.z;
 
-		this.rigidbody.setNextKinematicTranslation(tgtPosition);
-	}
-
-	interpolatePosition(delta: number): THREE.Vector3 {
-		this.elapsed += delta;
-
-		const alpha = this.elapsed * this.physicsWorld.tickrate;
-		let pos = new THREE.Vector3(this.movementDiff.x, this.movementDiff.y, this.movementDiff.z);
-		return pos.multiplyScalar(alpha).add(this.lastPosition);
+		this.rigidbody.setNextKinematicTranslation(tgtDestination);
+		this.interpolator.physicsUpdate();
 	}
 
 	warp(pos: RAPIER.Vector3) {
-		this.movementDiff.x = 0;
-		this.movementDiff.y = 0;
-		this.movementDiff.z = 0;
-
-		this.lastPosition.x = pos.x;
-		this.lastPosition.y = pos.y;
-		this.lastPosition.z = pos.z;
-
+		this.interpolator.warp(pos);
 		this.rigidbody.setNextKinematicTranslation(pos);
 	}
 }
@@ -304,14 +281,19 @@ export class Player extends PortalableObject {
 
 		const movement = forwardsScaled.add(rightScaled)
 
-		this.playerPhysics.update(delta, movement);
+		this.playerPhysics.physicsUpdate(delta, movement);
 	}
 
 	update(delta: number) {
-		this.rootScene.position.copy(this.playerPhysics.interpolatePosition(delta));
+		this.rootScene.position.copy(this.playerPhysics.interpolator.update());
 
 		if (this.duplicateObject) {
+			if (this.duplicateObject.visible != this.isInsidePortal()) {
+				console.log("swap");
+			}
+
 			this.duplicateObject.visible = this.isInsidePortal();
+
 			if (this.isInsidePortal()) {
 				const cameraPos = this.rootScene.getWorldPosition(new THREE.Vector3());
 				const cameraRot = this.rootScene.getWorldQuaternion(new THREE.Quaternion());
@@ -334,7 +316,8 @@ export class Player extends PortalableObject {
 	}
 
 	getPosition(): THREE.Vector3 {
-		return this.rootScene.getWorldPosition(new THREE.Vector3());
+		const rpos = this.playerPhysics.rigidbody.translation();
+		return new THREE.Vector3().copy(rpos);
 	}
 
 	getRotation(): THREE.Quaternion {

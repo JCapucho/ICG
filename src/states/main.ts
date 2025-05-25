@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Application } from "../app";
 import { AppState } from "./state";
 import { Player } from '../player';
-import { PhysicsWorld } from '../physicsWorld';
+import { PhysicsWorld } from '../physics/physicsWorld';
 import { PlaneObject } from '../objects/plane';
 
 import levelData from "./level.json";

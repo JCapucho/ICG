@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
-import { isPlayer, isPortalable, PhysicsWorld } from '../physicsWorld';
+import { isPlayer, isPortalable, PhysicsWorld } from '../physics/physicsWorld';
 import { GameObject } from '../objects/gameObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portalManager';
 import { PortalableObject } from './portalableObject';
@@ -195,7 +195,7 @@ export class Portal {
 		this.frame[3].setRotation(rot);
 
 		const normal = this.mesh.getWorldDirection(this.clippingPlane.normal);
-		this.clippingPlane.constant = -normal.dot(this.teleportRef);
+		this.clippingPlane.constant = -normal.dot(this.teleportRef) + 0.1;
 	}
 
 	physicsUpdate() {
@@ -208,7 +208,7 @@ export class Portal {
 			const direction = pos.clone().sub(this.teleportRef).normalize();
 			const portalForwards = this.mesh.getWorldDirection(new THREE.Vector3());
 
-			if (direction.dot(portalForwards) < -0.1) {
+			if (direction.dot(portalForwards) < 0.0) {
 				const newPos = calculateCameraPosition(pos, this.mesh, this.otherPortal.mesh);
 
 				const rot = traveller.getRotation();
@@ -232,6 +232,8 @@ export class Portal {
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
 
+		console.log("Portal enter");
+
 		otherUserData.portalable.enteredPortal(this);
 
 		this.attachedObject.collider.setCollisionGroups(portalAttachedObjectCollisionGroups);
@@ -253,6 +255,8 @@ export class Portal {
 
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
+
+		console.log("Portal exit");
 
 		otherUserData.portalable.exitedPortal();
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 
-import { PhysicsWorld } from '../physicsWorld';
+import { PhysicsWorld } from '../physics/physicsWorld';
 import { GameObject } from './gameObject';
 
 function buildPlaneUVs(x: number, y: number): THREE.BufferAttribute {

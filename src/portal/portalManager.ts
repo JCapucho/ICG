@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from '../app';
 
 import { Portal, halfTurn } from './portal';
-import { PhysicsWorld } from '../physicsWorld';
+import { PhysicsWorld } from '../physics/physicsWorld';
 import { GameObject } from '../objects/gameObject';
 
 import fullscreenTriangleVertexShader from "./fullscreenTriangle.vert?raw";
