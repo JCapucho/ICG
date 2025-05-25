@@ -22,7 +22,7 @@ function createPortalBoxGeometry(width: number, height: number): THREE.BufferGeo
 	const half_width = width / 2;
 	const half_heigth = height / 2;
 
-	const Z = 2;
+	const Z = 0.5;
 
 	const vertices = new Float32Array(3 * 8);
 	vertices[0] = -half_width;
@@ -119,9 +119,12 @@ function createPortalBoxGeometry(width: number, height: number): THREE.BufferGeo
 
 export const halfTurn = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
 
+const FRAME_DEPTH = 0.2;
+const HALF_DEPTH = FRAME_DEPTH / 2;
+
 export class Portal {
-	private half_width: number;
-	private half_height: number;
+	private frame_width_indent: number;
+	private frame_height_indent: number;
 
 	public mesh: THREE.Mesh;
 	private planeGeometry: THREE.BufferGeometry;
@@ -152,19 +155,22 @@ export class Portal {
 			});
 		this.rigidbody = physics.rapierWorld.createRigidBody(rigidBodyDesc);
 
-		this.half_width = width / 2;
-		this.half_height = height / 2;
+		const half_width = width / 2;
+		const half_height = height / 2;
 
-		const colliderDesc = RAPIER.ColliderDesc.cuboid(this.half_width, this.half_height, 0.25)
+		const colliderDesc = RAPIER.ColliderDesc.cuboid(half_width, half_height, 0.25)
 			.setSensor(true)
 			.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
 		this.sensor = physics.rapierWorld.createCollider(colliderDesc, this.rigidbody);
 
+		this.frame_width_indent = half_width + HALF_DEPTH;
+		this.frame_height_indent = half_height + HALF_DEPTH;
+
 		this.frame = new Array(4);
-		const sideDesc = RAPIER.ColliderDesc.cuboid(0.1, this.half_height + 0.1, 0.2);
+		const sideDesc = RAPIER.ColliderDesc.cuboid(0.1, this.frame_height_indent, FRAME_DEPTH);
 		this.frame[0] = physics.rapierWorld.createCollider(sideDesc);
 		this.frame[1] = physics.rapierWorld.createCollider(sideDesc);
-		const capDesc = RAPIER.ColliderDesc.cuboid(this.half_width + 0.1, 0.1, 0.2);
+		const capDesc = RAPIER.ColliderDesc.cuboid(this.frame_width_indent, 0.1, FRAME_DEPTH);
 		this.frame[2] = physics.rapierWorld.createCollider(capDesc);
 		this.frame[3] = physics.rapierWorld.createCollider(capDesc);
 
@@ -181,16 +187,28 @@ export class Portal {
 		const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rot)
 		const right = new THREE.Vector3(1, 0, 0).applyQuaternion(rot)
 
-		this.frame[0].setTranslation(right.clone().multiplyScalar(this.half_width + 0.1).add(pos));
+		const indent = new THREE.Vector3(0, 0, 1)
+			.applyQuaternion(rot)
+			.multiplyScalar(-FRAME_DEPTH);
+
+		this.frame[0].setTranslation(right.clone().multiplyScalar(this.frame_width_indent)
+			.add(indent)
+			.add(pos));
 		this.frame[0].setRotation(rot);
 
-		this.frame[1].setTranslation(right.clone().multiplyScalar(-this.half_width - 0.1).add(pos));
+		this.frame[1].setTranslation(right.clone().multiplyScalar(-this.frame_width_indent)
+			.add(indent)
+			.add(pos));
 		this.frame[1].setRotation(rot);
 
-		this.frame[2].setTranslation(up.clone().multiplyScalar(this.half_height + 0.1).add(pos));
+		this.frame[2].setTranslation(up.clone().multiplyScalar(this.frame_height_indent)
+			.add(indent)
+			.add(pos));
 		this.frame[2].setRotation(rot);
 
-		this.frame[3].setTranslation(up.clone().multiplyScalar(-this.half_height - 0.1).add(pos));
+		this.frame[3].setTranslation(up.clone().multiplyScalar(-this.frame_height_indent)
+			.add(indent)
+			.add(pos));
 		this.frame[3].setRotation(rot);
 
 		const normal = this.mesh.getWorldDirection(this.clippingPlane.normal);

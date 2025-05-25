@@ -30,6 +30,9 @@ export class InteractableObject extends PortalableObject {
 		this.duplicateObject = SkeletonUtils.clone(object);
 		this.duplicateObject.visible = false;
 
+		this.installModelRenderData(this.object);
+		this.installModelRenderData(this.duplicateObject);
+
 		const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
 			.setUserData({
 				isPortalable: true,
