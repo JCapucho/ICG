@@ -28,6 +28,23 @@ export abstract class PortalableObject {
 		this.currentClippingPlanes = [];
 	}
 
+	protected installModelRenderData(scene: THREE.Object3D) {
+		scene.traverse((object) => {
+			if (object instanceof THREE.Mesh) {
+				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
+					if (!this.isInsidePortal())
+						return;
+
+					material.clippingPlanes = this.currentClippingPlanes;
+				};
+
+				object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
+					material.clippingPlanes = [];
+				};
+			}
+		})
+	}
+
 	public abstract getPosition(): THREE.Vector3;
 	public abstract getRotation(): THREE.Quaternion;
 	public abstract warp(pos: THREE.Vector3, rot: THREE.Quaternion): void;

@@ -188,23 +188,6 @@ export class Player extends PortalableObject {
 		});
 	}
 
-	private installModelRenderData(scene: THREE.Object3D) {
-		scene.traverse((object) => {
-			if (object instanceof THREE.Mesh) {
-				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
-					if (!this.isInsidePortal())
-						return;
-
-					material.clippingPlanes = this.currentClippingPlanes;
-				};
-
-				object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
-					material.clippingPlanes = [];
-				};
-			}
-		})
-	}
-
 	private onPointerMove(event: PointerEvent) {
 		const euler = new THREE.Euler();
 		euler.y = event.movementX * this.lookSpeed;
@@ -288,10 +271,6 @@ export class Player extends PortalableObject {
 		this.rootScene.position.copy(this.playerPhysics.interpolator.update());
 
 		if (this.duplicateObject) {
-			if (this.duplicateObject.visible != this.isInsidePortal()) {
-				console.log("swap");
-			}
-
 			this.duplicateObject.visible = this.isInsidePortal();
 
 			if (this.isInsidePortal()) {

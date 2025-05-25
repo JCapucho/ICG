@@ -8,6 +8,8 @@ import { PlaneObject } from '../objects/plane';
 
 import levelData from "./level.json";
 import { PortalManager } from '../portal/portalManager';
+import { InteractableObject } from '../objects/InteractableObject';
+import RAPIER from '@dimforge/rapier3d';
 
 function textureRepeat(texture: THREE.Texture) {
 	texture.wrapS = THREE.RepeatWrapping;
@@ -40,6 +42,8 @@ export class MainState extends AppState {
 
 	private physicsWorld: PhysicsWorld;
 
+	private interactableObjects: InteractableObject[] = [];
+
 	constructor(app: Application) {
 		super();
 
@@ -69,6 +73,11 @@ export class MainState extends AppState {
 		this.portalManager = new PortalManager(app.renderer, this.physicsWorld, objs);
 
 		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
+
+		const obj = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({ color: "#ffffff" }));
+		const interactable = new InteractableObject(obj, RAPIER.ColliderDesc.ball(0.5), this.physicsWorld, this.scene);
+		interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion());
+		this.interactableObjects.push(interactable);
 	}
 
 	resize(width: number, height: number) {
@@ -84,12 +93,18 @@ export class MainState extends AppState {
 
 		this.player.update(delta);
 
+		for (const interactable of this.interactableObjects)
+			interactable.update();
+
 		this.portalManager.render(this.scene, this.camera, renderer);
 	}
 
 	physicsUpdate(delta: number) {
 		this.player.physicsUpdate(delta);
 		this.portalManager.physicsUpdate();
+
+		for (const interactable of this.interactableObjects)
+			interactable.physicsUpdate();
 	}
 
 	debugChanged(debug: boolean): void {
