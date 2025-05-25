@@ -7,7 +7,7 @@ import { Application, SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from "
 import { PhysicsWorld, PlayerUserData } from './physics/physicsWorld';
 import { PortalableObject } from './portal/portalableObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portal/portalManager';
-import { PhysicsInterpolator } from './physics/physicsInterpolator';
+import { PhysicsPositionInterpolator } from './physics/physicsInterpolator';
 
 export class PlayerPhysics {
 	private physicsWorld: PhysicsWorld;
@@ -19,7 +19,7 @@ export class PlayerPhysics {
 	private grounded: boolean = false;
 	private velocity: RAPIER.Vector3 = RAPIER.VectorOps.zeros();
 
-	public interpolator: PhysicsInterpolator;
+	public interpolator: PhysicsPositionInterpolator;
 
 	constructor(player: Player, physicsWorld: PhysicsWorld) {
 		this.physicsWorld = physicsWorld;
@@ -45,7 +45,7 @@ export class PlayerPhysics {
 		this.characterController.setApplyImpulsesToDynamicBodies(true);
 		this.characterController.setCharacterMass(1.0);
 
-		this.interpolator = new PhysicsInterpolator(this.rigidbody, physicsWorld);
+		this.interpolator = new PhysicsPositionInterpolator(this.rigidbody, physicsWorld);
 	}
 
 	physicsUpdate(delta: number, movement: RAPIER.Vector3) {

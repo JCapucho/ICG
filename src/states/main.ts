@@ -74,10 +74,23 @@ export class MainState extends AppState {
 
 		this.player = new Player(app, this.scene, this.physicsWorld, this.camera);
 
-		const obj = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({ color: "#ffffff" }));
-		const interactable = new InteractableObject(obj, RAPIER.ColliderDesc.ball(0.5), this.physicsWorld, this.scene);
-		interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion());
-		this.interactableObjects.push(interactable);
+
+		app.gltfLoader.load("Models/soccer_ball_low-poly_pbr.glb", (gltf) => {
+			gltf.scene.scale.multiplyScalar(7);
+			gltf.scene.position.y -= 0.5;
+
+			const scene = new THREE.Scene();
+			scene.add(gltf.scene);
+
+			const interactable = new InteractableObject(
+				scene,
+				RAPIER.ColliderDesc.ball(0.5),
+				this.physicsWorld,
+				this.scene
+			);
+			interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion());
+			this.interactableObjects.push(interactable);
+		});
 	}
 
 	resize(width: number, height: number) {

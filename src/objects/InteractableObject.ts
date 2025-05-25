@@ -4,7 +4,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 import { PhysicsWorld } from '../physics/physicsWorld';
 import { PortalableObject } from '../portal/portalableObject';
-import { PhysicsInterpolator } from '../physics/physicsInterpolator';
+import { PhysicsPositionInterpolator, PhysicsRotationInterpolator } from '../physics/physicsInterpolator';
 import { PortalableUserData } from '../physicsWorld';
 import { calculateCameraPosition, calculateCameraRotation } from '../portal/portalManager';
 
@@ -15,7 +15,8 @@ export class InteractableObject extends PortalableObject {
 	public collider: RAPIER.Collider;
 	public rigidbody: RAPIER.RigidBody;
 
-	private interpolator: PhysicsInterpolator;
+	private posInterpolator: PhysicsPositionInterpolator;
+	private rotInterpolator: PhysicsRotationInterpolator;
 
 	constructor(
 		object: THREE.Object3D,
@@ -37,15 +38,16 @@ export class InteractableObject extends PortalableObject {
 		this.rigidbody = physicsWorld.rapierWorld.createRigidBody(rigidBodyDesc);
 		this.collider = physicsWorld.rapierWorld.createCollider(collider, this.rigidbody);
 
-		this.interpolator = new PhysicsInterpolator(this.rigidbody, physicsWorld);
+		this.posInterpolator = new PhysicsPositionInterpolator(this.rigidbody, physicsWorld);
+		this.rotInterpolator = new PhysicsRotationInterpolator(this.rigidbody, physicsWorld);
 
 		scene.add(this.object);
 		scene.add(this.duplicateObject);
 	}
 
 	public update() {
-		// TODO: Rotation
-		this.object.position.copy(this.interpolator.update());
+		this.object.position.copy(this.posInterpolator.update());
+		this.object.quaternion.copy(this.rotInterpolator.update());
 
 		this.duplicateObject.visible = this.isInsidePortal();
 		if (this.isInsidePortal()) {
@@ -67,7 +69,8 @@ export class InteractableObject extends PortalableObject {
 	}
 
 	public physicsUpdate() {
-		this.interpolator.physicsUpdate();
+		this.posInterpolator.physicsUpdate();
+		this.rotInterpolator.physicsUpdate();
 	}
 
 	public getPosition(): THREE.Vector3 {
@@ -81,6 +84,7 @@ export class InteractableObject extends PortalableObject {
 	public warp(pos: THREE.Vector3, rot: THREE.Quaternion): void {
 		this.rigidbody.setTranslation(pos, true);
 		this.rigidbody.setRotation(rot, true);
-		this.interpolator.warp(pos);
+		this.posInterpolator.warp(pos);
+		this.rotInterpolator.warp(rot);
 	}
 }

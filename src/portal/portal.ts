@@ -1,21 +1,20 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
+
 import { isPlayer, isPortalable, PhysicsWorld } from '../physics/physicsWorld';
 import { GameObject } from '../objects/gameObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portalManager';
 import { PortalableObject } from './portalableObject';
+import { createCollisionGroups, PORTAL_ATTACHED_GEOMETRY, PORTAL_TRAVELLING_GEOMETRY } from '../physics/layers';
 
-
-function createCollisionGroups(membership: number, mask: number): number {
-	return membership << 16 | mask;
-}
-
-// Collision groups:
-// 1 (bit 0) - Normal geometry
-// 2 (bit 1) - Portal geometry
-// 4 (bit 2) - Geometry passing through portals
-const portalAttachedObjectCollisionGroups = createCollisionGroups(1 << 1, 1);
-const portalTravellingObjectCollisionGroups = createCollisionGroups(1 << 2, 1);
+const portalAttachedObjectCollisionGroups = createCollisionGroups(
+	PORTAL_ATTACHED_GEOMETRY,
+	~PORTAL_TRAVELLING_GEOMETRY
+);
+const portalTravellingObjectCollisionGroups = createCollisionGroups(
+	PORTAL_TRAVELLING_GEOMETRY,
+	~PORTAL_ATTACHED_GEOMETRY
+);
 
 const defaultCollisionGroup = createCollisionGroups(0xffff, 0xffff);
 
