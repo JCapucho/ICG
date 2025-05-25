@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 
+import { Player } from '../player';
 import { RapierDebugRenderer } from '../utils/rapierDebugRender';
 import { PortalableObject } from '../portal/portalableObject';
 
@@ -18,6 +19,7 @@ export interface PortalableUserData extends PhysicsUserData {
 
 export interface PlayerUserData extends PortalableUserData {
 	isPlayer: true;
+	portalable: Player;
 }
 
 export function isPortalable(userData: PhysicsUserData): userData is PortalableUserData {

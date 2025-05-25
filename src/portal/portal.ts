@@ -6,6 +6,7 @@ import { GameObject } from '../objects/gameObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portalManager';
 import { PortalableObject } from './portalableObject';
 import { createCollisionGroups, PORTAL_ATTACHED_GEOMETRY, PORTAL_TRAVELLING_GEOMETRY } from '../physics/layers';
+import { Player } from '../player';
 
 const portalAttachedObjectCollisionGroups = createCollisionGroups(
 	PORTAL_ATTACHED_GEOMETRY,
@@ -138,9 +139,11 @@ export class Portal {
 	private attachedObject?: GameObject;
 	public otherPortal?: Portal;
 
-	private playerInPortal: boolean = false;
+	private playerReference: Player | null = null;
+
 	private travellingObjects: PortalableObject[] = [];
 	private teleportRef: THREE.Vector3 = new THREE.Vector3();
+	private portalPlane: THREE.Plane = new THREE.Plane();
 	private clippingPlane: THREE.Plane = new THREE.Plane();
 
 	constructor(material: THREE.Material, width: number, height: number, physics: PhysicsWorld) {
@@ -211,8 +214,11 @@ export class Portal {
 			.add(pos));
 		this.frame[3].setRotation(rot);
 
-		const normal = this.mesh.getWorldDirection(this.clippingPlane.normal);
-		this.clippingPlane.constant = -normal.dot(this.teleportRef) + 0.1;
+		const normal = this.mesh.getWorldDirection(this.portalPlane.normal);
+		this.portalPlane.constant = -normal.dot(this.teleportRef);
+
+		this.clippingPlane.copy(this.portalPlane);
+		this.clippingPlane.constant += 0.1;
 	}
 
 	physicsUpdate() {
@@ -261,7 +267,7 @@ export class Portal {
 		if (!isPlayer(otherUserData))
 			return;
 
-		this.playerInPortal = true;
+		this.playerReference = otherUserData.portalable;
 	}
 
 	private onPortalExit(other: RAPIER.Collider, world: PhysicsWorld) {
@@ -287,7 +293,7 @@ export class Portal {
 		if (!isPlayer(otherUserData))
 			return;
 
-		this.playerInPortal = false;
+		this.playerReference = null;
 	}
 
 	getClippingPlane(): THREE.Plane {
@@ -306,8 +312,14 @@ export class Portal {
 		camera: THREE.Camera,
 		root: boolean
 	) {
-		if (this.playerInPortal && root)
-			this.mesh.geometry = this.boxGeometry;
+		if (root && this.playerReference != null) {
+			const playerPortalDistance = this.portalPlane.distanceToPoint(
+				this.playerReference.rootScene.position,
+			);
+
+			if (playerPortalDistance < 0.2)
+				this.mesh.geometry = this.boxGeometry;
+		}
 
 		renderer.render(this.mesh, camera);
 		this.mesh.geometry = this.planeGeometry;

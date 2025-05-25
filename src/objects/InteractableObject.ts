@@ -2,11 +2,10 @@ import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-import { PhysicsWorld } from '../physics/physicsWorld';
 import { PortalableObject } from '../portal/portalableObject';
-import { PhysicsPositionInterpolator, PhysicsRotationInterpolator } from '../physics/physicsInterpolator';
-import { PortalableUserData } from '../physicsWorld';
 import { calculateCameraPosition, calculateCameraRotation } from '../portal/portalManager';
+import { PhysicsWorld, PortalableUserData } from '../physics/physicsWorld';
+import { PhysicsPositionInterpolator, PhysicsRotationInterpolator } from '../physics/physicsInterpolator';
 
 export class InteractableObject extends PortalableObject {
 	public object: THREE.Object3D;

@@ -86,7 +86,7 @@ export class PlayerPhysics {
 }
 
 export class Player extends PortalableObject {
-	private rootScene: THREE.Scene;
+	public rootScene: THREE.Scene;
 	private duplicateObject: THREE.Object3D | undefined;
 	private camera: THREE.PerspectiveCamera;
 
