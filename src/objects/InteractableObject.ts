@@ -38,6 +38,7 @@ export class InteractableObject extends PortalableObject {
 				portalable: this
 			} satisfies PortalableUserData);
 		this.rigidbody = physicsWorld.rapierWorld.createRigidBody(rigidBodyDesc);
+
 		this.collider = physicsWorld.rapierWorld.createCollider(collider, this.rigidbody);
 
 		this.posInterpolator = new PhysicsPositionInterpolator(this.rigidbody, physicsWorld);
@@ -88,12 +89,9 @@ export class InteractableObject extends PortalableObject {
 		this.rigidbody.setRotation(rot, true);
 
 		const vel = new THREE.Vector3().copy(this.rigidbody.linvel());
+		console.log(new THREE.Euler().setFromQuaternion(relativeRot));
 		vel.applyQuaternion(relativeRot);
 		this.rigidbody.setLinvel(vel, true);
-
-		const angvel = new THREE.Vector3().copy(this.rigidbody.angvel());
-		angvel.applyQuaternion(relativeRot);
-		this.rigidbody.setLinvel(angvel, true);
 
 		this.posInterpolator.warp(pos);
 		this.rotInterpolator.warp(rot);

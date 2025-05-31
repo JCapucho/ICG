@@ -239,7 +239,7 @@ export class Portal {
 
 				let relativeRot = this.mesh.getWorldQuaternion(new THREE.Quaternion())
 					.invert()
-					.multiply(rot);
+					.multiply(this.otherPortal.mesh.getWorldQuaternion(new THREE.Quaternion()));
 				relativeRot.premultiply(halfTurn)
 
 				// The object is behind the portal

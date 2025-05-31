@@ -314,7 +314,7 @@ export class Player extends PortalableObject {
 		return this.rootScene.getWorldQuaternion(new THREE.Quaternion());
 	}
 
-	warp(pos: THREE.Vector3, rot: THREE.Quaternion, relativeRot: THREE.Quaternion) {
+	warp(pos: THREE.Vector3, rot: THREE.Quaternion, _relativeRot: THREE.Quaternion) {
 		this.playerPhysics.warp(pos);
 		this.rootScene.setRotationFromQuaternion(rot);
 	}
