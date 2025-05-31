@@ -1,7 +1,14 @@
+@font-face {
+	font-family: "Jaro";
+	src: local("Jaro-Regular"),
+		url(./assets/fonts/jaro/static/Jaro-Regular.ttf) format('truetype');
+}
+
 html,
 body {
 	margin: 0;
 	height: 100%;
+	font-family: "Jaro", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 #app {
@@ -10,7 +17,8 @@ body {
 	display: block;
 }
 
-.mainmenu {
+.mainmenu,
+.loadingmenu {
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -23,9 +31,20 @@ body {
 	z-index: 20;
 
 	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.container {
+	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
+
+	width: 100%;
+
+	margin: 2rem;
+	max-width: 32rem;
 }
 
 .ui-btn {
@@ -84,4 +103,45 @@ body {
 	to {
 		--rotate: 360deg;
 	}
+}
+
+progress[value] {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+
+	border: none;
+
+	border-radius: 1rem;
+	width: 100%;
+	height: 20px;
+
+	background-color: oklch(20% 10% 240deg / 0.7);
+}
+
+progress[value]::-webkit-progress-bar {
+	border-radius: 1rem;
+	background-color: oklch(20% 10% 240deg / 0.7);
+}
+
+progress[value]::-webkit-progress-value {
+	border-radius: 1rem;
+	background: linear-gradient(to right,
+			oklch(0.6891 0.175 245.42),
+			oklch(0.7736 0.173503 65.0523));
+}
+
+progress[value]::-moz-progress-bar {
+	border-radius: 1rem;
+	background: linear-gradient(to right,
+			oklch(0.6891 0.175 245.42),
+			oklch(0.7736 0.173503 65.0523));
+}
+
+.loadingtitle {
+	color: white;
+	width: 100%;
+	margin: 0;
+	margin-bottom: 0.2rem;
+	font-size: 2.5rem;
 }

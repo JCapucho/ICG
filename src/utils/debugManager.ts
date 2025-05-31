@@ -40,9 +40,7 @@ export class DebugManager {
 		}
 
 		this.enabled = debug;
-
-		if (this.app.state)
-			this.app.state.debugChanged(this.enabled);
+		this.app.debugChanged(this.enabled);
 	}
 
 	update() {
@@ -50,8 +48,6 @@ export class DebugManager {
 			return;
 
 		this.stats.update();
-
-		if (this.app.state)
-			this.app.state.debugUpdate();
+		this.app.debugChanged(this.enabled);
 	}
 }

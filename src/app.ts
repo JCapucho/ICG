@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export type Rapier = typeof import('@dimforge/rapier3d');
-
 import { AppState } from "./states/state";
 import { DebugManager } from './utils/debugManager';
 
@@ -18,14 +16,13 @@ export class Application {
 	public rgbeLoader: RGBELoader;
 	public textureLoader: THREE.TextureLoader;
 	public gltfLoader: GLTFLoader;
-	public rapier: Rapier;
 
 	private clock: THREE.Clock;
 	private debugManager: DebugManager;
 
 	private state: AppState | null = null;
 
-	constructor(container: HTMLElement, rapier: Rapier) {
+	constructor(container: HTMLElement) {
 		this.container = container;
 		this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
@@ -39,7 +36,6 @@ export class Application {
 		this.rgbeLoader = new RGBELoader().setPath(import.meta.env.BASE_URL);
 		this.textureLoader = new THREE.TextureLoader().setPath(import.meta.env.BASE_URL);
 		this.gltfLoader = new GLTFLoader().setPath(import.meta.env.BASE_URL);
-		this.rapier = rapier;
 
 		this.clock = new THREE.Clock();
 
@@ -79,5 +75,10 @@ export class Application {
 
 		this.state = state;
 		this.state.onStateEnter(this);
+	}
+
+	public debugChanged(debug: boolean) {
+		if (this.state)
+			this.state.debugChanged(debug);
 	}
 }

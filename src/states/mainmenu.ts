@@ -1,5 +1,5 @@
 import { Application } from "../app";
-import { PlayState } from "./play";
+import { LoadingState } from "./loading";
 import { AppState } from "./state";
 
 export class MainMenuState extends AppState {
@@ -20,7 +20,7 @@ export class MainMenuState extends AppState {
 	}
 
 	private onPlayClick(app: Application) {
-		app.setState(new PlayState(app));
+		app.setState(new LoadingState("cube"));
 	}
 
 	onStateExit(_app: Application): void {

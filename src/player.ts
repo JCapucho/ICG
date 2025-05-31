@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 import { clamp } from 'three/src/math/MathUtils.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 
-import { Application, SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from "./app";
+import { SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from "./app";
 import { PhysicsWorld, PlayerUserData } from './physics/physicsWorld';
 import { PortalableObject } from './portal/portalableObject';
 import { calculateCameraPosition, calculateCameraRotation } from './portal/portalManager';
@@ -114,7 +115,7 @@ export class Player extends PortalableObject {
 	private forwardsVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 	private rightVector: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
 
-	constructor(app: Application, scene: THREE.Scene, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
+	constructor(playerGltf: GLTF, scene: THREE.Scene, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
 		super();
 
 		// Create a scene for the player
@@ -132,60 +133,52 @@ export class Player extends PortalableObject {
 
 		this.playerPhysics = new PlayerPhysics(this, physicsWorld);
 
-		// Load the model for the player
-		app.gltfLoader.load("Models/Character_Animated.glb", (gltf) => {
-			const mainObject = gltf.scene;
-			mainObject.traverse(object => {
-				// Set the model to only render on the player layer
-				object.layers.set(PLAYER_LAYER);
-			});
-			const duplicateObject = SkeletonUtils.clone(gltf.scene);
-			duplicateObject.traverse(object => {
-				// Set the model to only render for the player
-				object.layers.set(DUPLICATE_PLAYER_LAYER);
-			});
+		// Create duplicate object
+		const mainObject = playerGltf.scene;
+		const duplicateObject = SkeletonUtils.clone(mainObject);
+		duplicateObject.visible = false;
 
-			duplicateObject.visible = false;
-
-			this.installModelRenderData(mainObject);
-			this.installModelRenderData(duplicateObject);
-
-			// Store the animation data
-			this.animationGroup = new THREE.AnimationObjectGroup(
-				mainObject,
-				duplicateObject
-			);
-			this.mixer = new THREE.AnimationMixer(this.animationGroup);
-
-			// Load the relevant animations
-			const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Idle');
-			this.idleAction = this.mixer.clipAction(idleClip);
-			const walkClip = THREE.AnimationClip.findByName(gltf.animations, 'Run');
-			this.walkAction = this.mixer.clipAction(walkClip);
-
-			// Play the idle animation
-			this.activeAction = this.idleAction.play();
-
-			// Add the model to the player scene
-			this.rootScene.add(mainObject);
-
-			scene.add(this.rootScene);
-			scene.add(duplicateObject);
-
-			this.duplicateObject = duplicateObject;
+		// Install renderer layers in objects
+		mainObject.traverse(object => {
+			// Set the model to only render on the player layer
+			object.layers.set(PLAYER_LAYER);
 		});
+		duplicateObject.traverse(object => {
+			// Set the model to only render for the player
+			object.layers.set(DUPLICATE_PLAYER_LAYER);
+		});
+
+		this.installRootModelRenderData(mainObject);
+		this.installCloneModelRenderData(duplicateObject);
+
+		// Store the animation data
+		this.animationGroup = new THREE.AnimationObjectGroup(
+			mainObject,
+			duplicateObject
+		);
+		this.mixer = new THREE.AnimationMixer(this.animationGroup);
+
+		// Load the relevant animations
+		const idleClip = THREE.AnimationClip.findByName(playerGltf.animations, 'Idle');
+		this.idleAction = this.mixer.clipAction(idleClip);
+		const walkClip = THREE.AnimationClip.findByName(playerGltf.animations, 'Run');
+		this.walkAction = this.mixer.clipAction(walkClip);
+
+		// Play the idle animation
+		this.activeAction = this.idleAction.play();
+
+		// Add the model to the player scene
+		this.rootScene.add(mainObject);
+
+		scene.add(this.rootScene);
+		scene.add(duplicateObject);
+
+		this.duplicateObject = duplicateObject;
 
 		// Handle input
 		document.addEventListener("keydown", (ev) => this.onKeyChange(ev, true));
 		document.addEventListener("keyup", (ev) => this.onKeyChange(ev, false));
 		document.addEventListener("pointermove", this.onPointerMove.bind(this));
-		app.renderer.domElement.addEventListener("click", async () => {
-			if (!document.pointerLockElement) {
-				await app.renderer.domElement.requestPointerLock({
-					unadjustedMovement: true,
-				});
-			}
-		});
 	}
 
 	private onPointerMove(event: PointerEvent) {
