@@ -23,7 +23,7 @@ export class Application {
 	private clock: THREE.Clock;
 	private debugManager: DebugManager;
 
-	public state: AppState | null = null;
+	private state: AppState | null = null;
 
 	constructor(container: HTMLElement, rapier: Rapier) {
 		this.container = container;
@@ -64,12 +64,20 @@ export class Application {
 			this.state.render(delta, this.renderer)
 	}
 
-	start() {
+	public start() {
 		window.addEventListener("resize", () => {
 			this.resize();
 			this.render();
 		});
 
 		this.renderer.setAnimationLoop(this.render.bind(this));
+	}
+
+	public setState(state: AppState) {
+		if (this.state)
+			this.state.onStateExit(this);
+
+		this.state = state;
+		this.state.onStateEnter(this);
 	}
 }

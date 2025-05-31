@@ -31,7 +31,7 @@ function loadTiles107Material(app: Application): THREE.Material {
 	});
 }
 
-export class MainState extends AppState {
+export class PlayState extends AppState {
 	public scene: THREE.Scene;
 	public camera: THREE.PerspectiveCamera;
 
@@ -88,7 +88,7 @@ export class MainState extends AppState {
 				this.physicsWorld,
 				this.scene
 			);
-			interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion());
+			interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion(), new THREE.Quaternion());
 			this.interactableObjects.push(interactable);
 		});
 	}
