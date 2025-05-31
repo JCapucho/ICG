@@ -80,8 +80,8 @@ export class PlayerPhysics {
 		this.interpolator.physicsUpdate();
 	}
 
-	warp(pos: RAPIER.Vector3) {
-		this.interpolator.warp(pos);
+	warp(pos: RAPIER.Vector3, relativeRot: THREE.Quaternion) {
+		this.interpolator.warp(pos, relativeRot);
 		this.rigidbody.setNextKinematicTranslation(pos);
 	}
 }
@@ -314,8 +314,8 @@ export class Player extends PortalableObject {
 		return this.rootScene.getWorldQuaternion(new THREE.Quaternion());
 	}
 
-	warp(pos: THREE.Vector3, rot: THREE.Quaternion, _relativeRot: THREE.Quaternion) {
-		this.playerPhysics.warp(pos);
+	warp(pos: THREE.Vector3, rot: THREE.Quaternion, relativeRot: THREE.Quaternion) {
+		this.playerPhysics.warp(pos, relativeRot);
 		this.rootScene.setRotationFromQuaternion(rot);
 	}
 

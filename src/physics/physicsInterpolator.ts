@@ -6,8 +6,8 @@ export class PhysicsPositionInterpolator {
 	private rigidbody: RAPIER.RigidBody;
 	private physicsWorld: PhysicsWorld;
 
-	private lastPos: RAPIER.Vector3;
-	private nextPos: RAPIER.Vector3;
+	private lastPos: THREE.Vector3 = new THREE.Vector3();
+	private nextPos: THREE.Vector3 = new THREE.Vector3();
 
 	private scratch: THREE.Vector3 = new THREE.Vector3();
 
@@ -15,8 +15,8 @@ export class PhysicsPositionInterpolator {
 		this.rigidbody = rigidbody;
 		this.physicsWorld = physicsWorld;
 
-		this.lastPos = this.rigidbody.translation();
-		this.nextPos = this.rigidbody.translation();
+		this.lastPos.copy(this.rigidbody.translation());
+		this.nextPos.copy(this.rigidbody.translation());
 	}
 
 	public update(): THREE.Vector3 {
@@ -28,13 +28,17 @@ export class PhysicsPositionInterpolator {
 	}
 
 	public physicsUpdate() {
-		this.lastPos = this.nextPos;
-		this.nextPos = this.rigidbody.translation();
+		this.lastPos.copy(this.nextPos);
+		this.nextPos.copy(this.rigidbody.translation());
 	}
 
-	public warp(pos: RAPIER.Vector3) {
-		this.lastPos = pos;
-		this.nextPos = pos;
+	public warp(pos: RAPIER.Vector3, relativeRot: THREE.Quaternion) {
+		const current = this.update();
+		const backwardDiff = this.lastPos.sub(current);
+		const forwardDiff = this.nextPos.sub(current);
+
+		this.lastPos.copy(backwardDiff.applyQuaternion(relativeRot).add(pos));
+		this.nextPos.copy(forwardDiff.applyQuaternion(relativeRot).add(pos));
 	}
 }
 

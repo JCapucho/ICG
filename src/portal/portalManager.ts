@@ -74,9 +74,8 @@ export class PortalManager {
 	constructor(physics: PhysicsWorld, objs: GameObject[]) {
 		this.portals = new Array(2);
 		this.portals[0] = new Portal(material1, portalWidth, portalHeight, physics);
-		this.portals[0].mesh.position.z = -3.75; // -5;
+		this.portals[0].mesh.position.z = -5;
 		this.portals[0].mesh.position.y = 2.5;
-		this.portals[0].mesh.rotation.y = Math.PI / 2;
 		this.portals[0].setAttachedObject(objs[2]);
 		this.portals[0].updatePositions();
 

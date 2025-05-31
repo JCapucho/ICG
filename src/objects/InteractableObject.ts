@@ -93,7 +93,7 @@ export class InteractableObject extends PortalableObject {
 		vel.applyQuaternion(relativeRot);
 		this.rigidbody.setLinvel(vel, true);
 
-		this.posInterpolator.warp(pos);
+		this.posInterpolator.warp(pos, relativeRot);
 		this.rotInterpolator.warp(rot);
 	}
 
