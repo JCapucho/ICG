@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d";
 
 import { PhysicsWorld } from '../physics/physicsWorld';
 import { GameObject } from './gameObject';
+import { PlaneGeometryData } from '../levels/levelData';
 
 function buildPlaneUVs(x: number, y: number): THREE.BufferAttribute {
 	const uvArray = new Float32Array(8);
@@ -49,23 +50,18 @@ function buildPlaneColliderVertices(x: number, y: number): [Float32Array, Uint32
 	return [vertices, indices];
 }
 
-interface PlaneOptions {
-	width: number,
-	height: number,
-	position: number[],
-	rotation: number[],
-	uvScale: number
-}
-
 export class PlaneObject extends GameObject {
 	constructor(
-		options: PlaneOptions,
+		options: PlaneGeometryData,
 		material: THREE.Material,
 		scene: THREE.Scene,
 		physicsWorld: PhysicsWorld
 	) {
 		const geometry = new THREE.PlaneGeometry(options.width, options.height);
 		const mesh = new THREE.Mesh(geometry, material);
+
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
 
 		mesh.position.x = options.position[0];
 		mesh.position.y = options.position[1];

@@ -29,8 +29,13 @@ export class Application {
 			powerPreference: "high-performance",
 			stencil: true
 		});
+
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 		this.renderer.toneMapping = THREE.NeutralToneMapping;
 		this.renderer.localClippingEnabled = true;
+
 		this.container.appendChild(this.renderer.domElement);
 
 		this.rgbeLoader = new RGBELoader().setPath(import.meta.env.BASE_URL);

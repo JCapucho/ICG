@@ -35,6 +35,9 @@ export abstract class PortalableObject {
 	protected installRootModelRenderData(scene: THREE.Object3D) {
 		scene.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
+				object.castShadow = true;
+				object.receiveShadow = true;
+
 				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
 					if (this.inPortalClippingPlane == null)
 						return;
@@ -52,6 +55,9 @@ export abstract class PortalableObject {
 	protected installCloneModelRenderData(scene: THREE.Object3D) {
 		scene.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
+				object.castShadow = true;
+				object.receiveShadow = true;
+
 				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
 					if (this.outPortalClippingPlane == null)
 						return;

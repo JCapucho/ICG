@@ -148,8 +148,8 @@ export class Portal {
 
 	constructor(material: THREE.Material, width: number, height: number, physics: PhysicsWorld) {
 		this.planeGeometry = new THREE.PlaneGeometry(width, height);
-		this.boxGeometry = createPortalBoxGeometry(width, height),
-			this.mesh = new THREE.Mesh(this.planeGeometry, material)
+		this.boxGeometry = createPortalBoxGeometry(width, height);
+		this.mesh = new THREE.Mesh(this.planeGeometry, material);
 
 		const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
 			.setUserData({

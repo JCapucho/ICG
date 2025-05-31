@@ -63,26 +63,50 @@ export class PlayState extends AppState {
 
 		this.player = new Player(this.loadedData.playerModel, this.scene, this.physicsWorld, this.camera);
 
-		// Interactable ball
-		const ballInstance = SkeletonUtils.clone(this.loadedData.ballModel.scene)
+		// Interactable Objects
+		for (const obj of this.loadedData.levelData.objects) {
+			const ballInstance = SkeletonUtils.clone(this.loadedData.ballModel.scene)
 
-		ballInstance.scale.multiplyScalar(7);
-		ballInstance.position.y -= 0.5;
+			const scene = new THREE.Scene();
+			scene.add(ballInstance);
 
-		const scene = new THREE.Scene();
-		scene.add(ballInstance);
+			const interactable = new InteractableObject(
+				scene,
+				RAPIER.ColliderDesc.ball(0.5),
+				this.physicsWorld,
+				this.scene
+			);
 
-		const interactable = new InteractableObject(
-			scene,
-			RAPIER.ColliderDesc.ball(0.5),
-			this.physicsWorld,
-			this.scene
-		);
-		interactable.warp(new THREE.Vector3(0, 3, 4.8), new THREE.Quaternion(), new THREE.Quaternion());
-		this.interactableObjects.push(interactable);
+			const position = new THREE.Vector3();
+			const rot = new THREE.Euler();
+
+			if (obj.position) {
+				position.x = obj.position[0];
+				position.y = obj.position[1];
+				position.z = obj.position[2];
+			}
+
+			if (obj.rotation) {
+				rot.x = obj.rotation[0];
+				rot.y = obj.rotation[1];
+				rot.z = obj.rotation[2];
+			}
+
+			interactable.warp(position, new THREE.Quaternion().setFromEuler(rot), new THREE.Quaternion());
+			this.interactableObjects.push(interactable);
+		}
 
 		// Pause Menu
 		this.pauseMenu = new PauseMenu();
+
+		// lights
+		const light = new THREE.DirectionalLight(0xFFEE7C, 1);
+		light.shadow.camera.left = -10;
+		light.shadow.camera.right = 10;
+		light.shadow.intensity = 2;
+		light.position.set(7 * 5, 6 * 5, 5 * 5)
+		light.castShadow = true;
+		this.scene.add(light);
 	}
 
 	resize(width: number, height: number) {

@@ -70,6 +70,7 @@ export class PortalManager {
 	private fullscreenTriangleMaterial: THREE.Material;
 
 	private portalCamera: THREE.PerspectiveCamera;
+	private frustum: THREE.Frustum = new THREE.Frustum();
 
 	constructor(physics: PhysicsWorld, objs: GameObject[]) {
 		this.portals = new Array(2);
@@ -114,6 +115,10 @@ export class PortalManager {
 		);
 	}
 
+	private cameraPosScratch: THREE.Vector3 = new THREE.Vector3();
+	private cameraRotScratch: THREE.Quaternion = new THREE.Quaternion();
+	private cameraProjScratch: THREE.Matrix4 = new THREE.Matrix4();
+
 	private renderRecursive(
 		recursionLevel: number,
 		scene: THREE.Scene,
@@ -136,8 +141,8 @@ export class PortalManager {
 		if (recursionLevel == maxRecursion)
 			return;
 
-		const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-		const cameraRot = camera.getWorldQuaternion(new THREE.Quaternion());
+		const cameraPos = camera.getWorldPosition(this.cameraPosScratch);
+		const cameraRot = camera.getWorldQuaternion(this.cameraRotScratch);
 
 		const savePos = camera.position.clone();
 		const saveRot = camera.rotation.clone();
@@ -145,6 +150,10 @@ export class PortalManager {
 		for (let i = 0; i < this.portals.length; i++) {
 			const portal = this.portals[i];
 			const outPortal = this.portals[(i + 1) % this.portals.length];
+
+			this.frustum.setFromProjectionMatrix(this.cameraProjScratch.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+			if (!this.frustum.intersectsObject(portal.mesh))
+				continue;
 
 			const clipPlane = outPortal.getClippingPlane();
 
@@ -195,9 +204,8 @@ export class PortalManager {
 
 	render(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer) {
 		camera.updateMatrixWorld();
-		for (const portal of this.portals) {
+		for (const portal of this.portals)
 			portal.mesh.updateMatrixWorld();
-		}
 
 		const context = renderer.getContext();
 

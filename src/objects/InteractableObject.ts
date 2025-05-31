@@ -89,7 +89,6 @@ export class InteractableObject extends PortalableObject {
 		this.rigidbody.setRotation(rot, true);
 
 		const vel = new THREE.Vector3().copy(this.rigidbody.linvel());
-		console.log(new THREE.Euler().setFromQuaternion(relativeRot));
 		vel.applyQuaternion(relativeRot);
 		this.rigidbody.setLinvel(vel, true);
 

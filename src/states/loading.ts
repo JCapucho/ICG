@@ -105,7 +105,12 @@ export class LoadingState extends AppState {
 		}));
 
 		this.ballModelPromise = this.accountPromise(app, new Promise(resolve => {
-			app.gltfLoader.load("Models/soccer_ball_low-poly_pbr.glb", resolve);
+			app.gltfLoader.load("Models/soccer_ball_low-poly_pbr.glb", (gltf) => {
+				gltf.scene.scale.multiplyScalar(7);
+				gltf.scene.position.y -= 0.5;
+
+				resolve(gltf);
+			});
 		}));
 
 		this.rapierPromise = this.accountPromise(app, import('@dimforge/rapier3d'));
