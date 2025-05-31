@@ -29,8 +29,8 @@ export class InteractableObject extends PortalableObject {
 		this.duplicateObject = SkeletonUtils.clone(object);
 		this.duplicateObject.visible = false;
 
-		this.installModelRenderData(this.object);
-		this.installModelRenderData(this.duplicateObject);
+		this.installRootModelRenderData(this.object);
+		this.installCloneModelRenderData(this.duplicateObject);
 
 		const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
 			.setUserData({
@@ -83,10 +83,30 @@ export class InteractableObject extends PortalableObject {
 		return new THREE.Quaternion().copy(this.rigidbody.rotation());
 	}
 
-	public warp(pos: THREE.Vector3, rot: THREE.Quaternion): void {
+	public warp(pos: THREE.Vector3, rot: THREE.Quaternion, relativeRot: THREE.Quaternion): void {
 		this.rigidbody.setTranslation(pos, true);
 		this.rigidbody.setRotation(rot, true);
+
+		const vel = new THREE.Vector3().copy(this.rigidbody.linvel());
+		vel.applyQuaternion(relativeRot);
+		this.rigidbody.setLinvel(vel, true);
+
+		const angvel = new THREE.Vector3().copy(this.rigidbody.angvel());
+		angvel.applyQuaternion(relativeRot);
+		this.rigidbody.setLinvel(angvel, true);
+
 		this.posInterpolator.warp(pos);
 		this.rotInterpolator.warp(rot);
+	}
+
+	public dispose() {
+		this.object.traverse(obj => {
+			if ("dispose" in obj && typeof obj.dispose == 'function')
+				obj.dispose();
+		});
+		this.duplicateObject.traverse(obj => {
+			if ("dispose" in obj && typeof obj.dispose == 'function')
+				obj.dispose();
+		});
 	}
 }

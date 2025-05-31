@@ -35,6 +35,8 @@ export class PhysicsWorld {
 	public readonly rapierWorld: RAPIER.World;
 	public readonly tickrate: number;
 
+	public isPaused: boolean = false;
+
 	private dt: number;
 	private accumulator: number = 0.0
 
@@ -57,6 +59,10 @@ export class PhysicsWorld {
 
 	update(userUpdate: (delta: number) => void) {
 		let frameTime = this.clock.getDelta();
+
+		if (this.isPaused)
+			return;
+
 		// Clamp the frame time so that the accumulator doesn't explode
 		if (frameTime > 0.25)
 			frameTime = 0.25;
@@ -121,5 +127,11 @@ export class PhysicsWorld {
 			userData.onEnter?.(other, this);
 		else
 			userData.onExit?.(other, this);
+	}
+
+	public dispose() {
+		this.rapierWorld.free();
+		this.eventQueue.free();
+		this.rapierDebugRender?.dispose();
 	}
 }

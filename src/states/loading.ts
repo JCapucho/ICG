@@ -6,7 +6,7 @@ export type Rapier = typeof import('@dimforge/rapier3d');
 import { Application } from "../app";
 import { LevelData } from "../levels/levelData";
 import { AppState } from "./state";
-import { PlayState } from './play';
+import { PlayState } from './play/state';
 
 export type LoadedData = {
 	levelData: LevelData;
@@ -19,6 +19,19 @@ export type LoadedData = {
 
 	rapier: Rapier;
 };
+
+export function disposeLoadedData(loadedData: LoadedData) {
+	loadedData.tiles107Material.dispose();
+	loadedData.skyboxTexture.dispose();
+	loadedData.ballModel.scene.traverse(obj => {
+		if ("dispose" in obj && typeof obj.dispose == 'function')
+			obj.dispose();
+	});
+	loadedData.playerModel.scene.traverse(obj => {
+		if ("dispose" in obj && typeof obj.dispose == 'function')
+			obj.dispose();
+	});
+}
 
 export class LoadingState extends AppState {
 	private loadingMenuRoot: HTMLElement | undefined;
@@ -157,6 +170,6 @@ export class LoadingState extends AppState {
 			rapier: await this.rapierPromise!,
 		};
 
-		app.setState(new PlayState(app, loadedData));
+		app.setState(new PlayState(loadedData));
 	}
 }

@@ -71,11 +71,12 @@ export class PortalManager {
 
 	private portalCamera: THREE.PerspectiveCamera;
 
-	constructor(renderer: THREE.WebGLRenderer, physics: PhysicsWorld, objs: GameObject[]) {
+	constructor(physics: PhysicsWorld, objs: GameObject[]) {
 		this.portals = new Array(2);
 		this.portals[0] = new Portal(material1, portalWidth, portalHeight, physics);
-		this.portals[0].mesh.position.z = -5;
+		this.portals[0].mesh.position.z = -3; // -5;
 		this.portals[0].mesh.position.y = 2.5;
+		this.portals[0].mesh.rotation.y = Math.PI / 2;
 		this.portals[0].setAttachedObject(objs[2]);
 		this.portals[0].updatePositions();
 
@@ -89,14 +90,8 @@ export class PortalManager {
 		this.portals[0].otherPortal = this.portals[1];
 		this.portals[1].otherPortal = this.portals[0];
 
-		const rtSize = new THREE.Vector2();
-		renderer.getSize(rtSize);
-
-		const width = rtSize.x;
-		const height = rtSize.y;
-
 		const rtFov = 75;
-		const rtAspect = width / height;
+		const rtAspect = window.innerWidth / window.innerHeight;
 		const rtNear = 0.1;
 		const rtFar = 1000;
 		this.portalCamera = new THREE.PerspectiveCamera(rtFov, rtAspect, rtNear, rtFar);
@@ -227,5 +222,13 @@ export class PortalManager {
 	physicsUpdate() {
 		for (const portal of this.portals)
 			portal.physicsUpdate();
+	}
+
+	public dispose() {
+		for (const portal of this.portals)
+			portal.dispose();
+
+		this.fullscreenTriangle.geometry.dispose();
+		this.fullscreenTriangleMaterial.dispose();
 	}
 }

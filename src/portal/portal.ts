@@ -235,12 +235,18 @@ export class Portal {
 				const newPos = calculateCameraPosition(pos, this.mesh, this.otherPortal.mesh);
 
 				const rot = traveller.getRotation();
-				const newRot = calculateCameraRotation(rot, this.mesh, this.otherPortal.mesh);
+				const newRot = calculateCameraRotation(rot.clone(), this.mesh, this.otherPortal.mesh);
+
+				let relativeRot = this.mesh.getWorldQuaternion(new THREE.Quaternion())
+					.invert()
+					.multiply(rot);
+				relativeRot.premultiply(halfTurn)
 
 				// The object is behind the portal
 				traveller.warp(
 					newPos,
-					newRot
+					newRot,
+					relativeRot
 				);
 			}
 		}
@@ -323,5 +329,10 @@ export class Portal {
 
 		renderer.render(this.mesh, camera);
 		this.mesh.geometry = this.planeGeometry;
+	}
+
+	public dispose() {
+		this.planeGeometry.dispose();
+		this.boxGeometry.dispose();
 	}
 }

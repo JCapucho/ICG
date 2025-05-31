@@ -88,10 +88,12 @@ export class PlayerPhysics {
 
 export class Player extends PortalableObject {
 	public rootScene: THREE.Scene;
-	private duplicateObject: THREE.Object3D | undefined;
+	private duplicateObject: THREE.Object3D;
 	private camera: THREE.PerspectiveCamera;
 
 	public playerPhysics: PlayerPhysics;
+
+	public isPaused: boolean = false;
 
 	private mixer: THREE.AnimationMixer | undefined;
 	private animationGroup: THREE.AnimationObjectGroup | undefined;
@@ -114,6 +116,10 @@ export class Player extends PortalableObject {
 
 	private forwardsVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 	private rightVector: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
+
+	private keyDownListener: (ev: KeyboardEvent) => void;
+	private keyUpListener: (ev: KeyboardEvent) => void;
+	private pointerMoveListener: (ev: PointerEvent) => void;
 
 	constructor(playerGltf: GLTF, scene: THREE.Scene, physicsWorld: PhysicsWorld, camera: THREE.PerspectiveCamera) {
 		super();
@@ -176,12 +182,18 @@ export class Player extends PortalableObject {
 		this.duplicateObject = duplicateObject;
 
 		// Handle input
-		document.addEventListener("keydown", (ev) => this.onKeyChange(ev, true));
-		document.addEventListener("keyup", (ev) => this.onKeyChange(ev, false));
-		document.addEventListener("pointermove", this.onPointerMove.bind(this));
+		this.keyDownListener = (ev) => this.onKeyChange(ev, true);
+		document.addEventListener("keydown", this.keyDownListener);
+		this.keyUpListener = (ev) => this.onKeyChange(ev, false);
+		document.addEventListener("keyup", this.keyUpListener);
+		this.pointerMoveListener = this.onPointerMove.bind(this);
+		document.addEventListener("pointermove", this.pointerMoveListener);
 	}
 
 	private onPointerMove(event: PointerEvent) {
+		if (this.isPaused)
+			return
+
 		const euler = new THREE.Euler();
 		euler.y = event.movementX * this.lookSpeed;
 		this.rootScene.applyQuaternion(new THREE.Quaternion().setFromEuler(euler));
@@ -248,6 +260,9 @@ export class Player extends PortalableObject {
 	}
 
 	physicsUpdate(delta: number) {
+		if (this.isPaused)
+			return;
+
 		const forwards = this.rootScene.getWorldDirection(this.forwardsVector);
 		const right = this.rightVector.crossVectors(forwards, THREE.Object3D.DEFAULT_UP).normalize();
 
@@ -261,6 +276,9 @@ export class Player extends PortalableObject {
 	}
 
 	update(delta: number) {
+		if (this.isPaused)
+			return;
+
 		this.rootScene.position.copy(this.playerPhysics.interpolator.update());
 
 		if (this.duplicateObject) {
@@ -296,8 +314,23 @@ export class Player extends PortalableObject {
 		return this.rootScene.getWorldQuaternion(new THREE.Quaternion());
 	}
 
-	warp(pos: THREE.Vector3, rot: THREE.Quaternion) {
+	warp(pos: THREE.Vector3, rot: THREE.Quaternion, relativeRot: THREE.Quaternion) {
 		this.playerPhysics.warp(pos);
 		this.rootScene.setRotationFromQuaternion(rot);
+	}
+
+	dispose() {
+		this.rootScene.traverse(obj => {
+			if ("dispose" in obj && typeof obj.dispose == 'function')
+				obj.dispose();
+		});
+		this.duplicateObject.traverse(obj => {
+			if ("dispose" in obj && typeof obj.dispose == 'function')
+				obj.dispose();
+		});
+
+		document.removeEventListener("keydown", this.keyDownListener);
+		document.removeEventListener("keyup", this.keyUpListener);
+		document.removeEventListener("pointermove", this.pointerMoveListener);
 	}
 }

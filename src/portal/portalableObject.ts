@@ -3,9 +3,12 @@ import { Portal } from './portal';
 
 export abstract class PortalableObject {
 	protected inPortalCount: number = 0;
+
 	protected inPortal: Portal | undefined;
 	protected outPortal: Portal | undefined;
-	protected currentClippingPlanes: THREE.Plane[] = [];
+
+	protected inPortalClippingPlane: THREE.Plane | null = null;
+	protected outPortalClippingPlane: THREE.Plane | null = null;
 
 	public isInsidePortal(): boolean {
 		return this.inPortalCount != 0;
@@ -15,27 +18,45 @@ export abstract class PortalableObject {
 		this.inPortalCount++;
 		this.inPortal = portal;
 		this.outPortal = portal.otherPortal;
-		this.currentClippingPlanes = [
-			this.inPortal.getClippingPlane(),
-			this.outPortal!.getClippingPlane()
-		];
+
+		this.inPortalClippingPlane = this.inPortal.getClippingPlane();
+		this.outPortalClippingPlane = this.outPortal!.getClippingPlane();
 	}
 
 	public exitedPortal() {
 		this.inPortalCount--;
 		this.inPortal = undefined;
 		this.outPortal = undefined;
-		this.currentClippingPlanes = [];
+
+		this.inPortalClippingPlane = null;
+		this.outPortalClippingPlane = null;
 	}
 
-	protected installModelRenderData(scene: THREE.Object3D) {
+	protected installRootModelRenderData(scene: THREE.Object3D) {
 		scene.traverse((object) => {
 			if (object instanceof THREE.Mesh) {
 				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
-					if (!this.isInsidePortal())
+					if (this.inPortalClippingPlane == null)
 						return;
 
-					material.clippingPlanes = this.currentClippingPlanes;
+					material.clippingPlanes = [this.inPortalClippingPlane];
+				};
+
+				object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
+					material.clippingPlanes = [];
+				};
+			}
+		})
+	}
+
+	protected installCloneModelRenderData(scene: THREE.Object3D) {
+		scene.traverse((object) => {
+			if (object instanceof THREE.Mesh) {
+				object.onBeforeRender = (_renderer, _scene, _camera, _geometry, material) => {
+					if (this.outPortalClippingPlane == null)
+						return;
+
+					material.clippingPlanes = [this.outPortalClippingPlane];
 				};
 
 				object.onAfterRender = (_renderer, _scene, _camera, _geometry, material) => {
@@ -47,5 +68,5 @@ export abstract class PortalableObject {
 
 	public abstract getPosition(): THREE.Vector3;
 	public abstract getRotation(): THREE.Quaternion;
-	public abstract warp(pos: THREE.Vector3, rot: THREE.Quaternion): void;
+	public abstract warp(pos: THREE.Vector3, rot: THREE.Quaternion, relativeRot: THREE.Quaternion): void;
 }

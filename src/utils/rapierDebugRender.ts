@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import RAPIER from "@dimforge/rapier3d";
 
 export class RapierDebugRenderer {
-	public mesh: THREE.LineSegments;
+	public mesh: THREE.LineSegments<THREE.BufferGeometry, THREE.Material>;
 	private physicsWorld: RAPIER.World;
 
 	constructor(physicsWorld: RAPIER.World) {
@@ -20,5 +20,10 @@ export class RapierDebugRenderer {
 		const { vertices, colors } = this.physicsWorld.debugRender()
 		this.mesh.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
 		this.mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4))
+	}
+
+	public dispose() {
+		this.mesh.geometry.dispose();
+		this.mesh.material.dispose();
 	}
 }
