@@ -63,9 +63,7 @@ export class PlaneObject extends GameObject {
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
 
-		mesh.position.x = options.position[0];
-		mesh.position.y = options.position[1];
-		mesh.position.z = options.position[2];
+		mesh.position.set(...options.position);
 
 		mesh.rotation.x = options.rotation[0] * Math.PI;
 		mesh.rotation.y = options.rotation[1] * Math.PI;

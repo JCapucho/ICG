@@ -16,13 +16,24 @@ export class MainMenuState extends AppState {
 		title.textContent = "Something about portals";
 		title.className = "maintitle";
 
-		const playBtn = document.createElement("button");
-		playBtn.textContent = "Play";
-		playBtn.className = "ui-btn";
-		playBtn.onclick = () => this.onPlayClick(app);
+		const levelContainer = document.createElement("div");
+		levelContainer.className = "levelcontainer";
+
+		const impossibleBtn = document.createElement("button");
+		impossibleBtn.textContent = "Impossible Geometry";
+		impossibleBtn.className = "ui-btn";
+		impossibleBtn.onclick = () => this.onPlayClick(app, "impossible");
+
+		const hallwayBtn = document.createElement("button");
+		hallwayBtn.textContent = "Infinite Hallway";
+		hallwayBtn.className = "ui-btn";
+		hallwayBtn.onclick = () => this.onPlayClick(app, "cube");
+
+		levelContainer.appendChild(impossibleBtn);
+		levelContainer.appendChild(hallwayBtn);
 
 		container.appendChild(title);
-		container.appendChild(playBtn);
+		container.appendChild(levelContainer);
 
 		this.mainMenuRoot.appendChild(container);
 
@@ -35,8 +46,8 @@ export class MainMenuState extends AppState {
 		app.container.appendChild(this.mainMenuRoot);
 	}
 
-	private onPlayClick(app: Application) {
-		app.setState(new LoadingState("cube"));
+	private onPlayClick(app: Application, level: string) {
+		app.setState(new LoadingState(level));
 	}
 
 	onStateExit(_app: Application): void {

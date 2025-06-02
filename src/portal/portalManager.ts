@@ -3,7 +3,6 @@ import { SCENE_LAYER, PLAYER_LAYER, DUPLICATE_PLAYER_LAYER } from '../app';
 
 import { Portal, halfTurn } from './portal';
 import { PhysicsWorld } from '../physics/physicsWorld';
-import { GameObject } from '../objects/gameObject';
 
 import fullscreenTriangleVertexShader from "./fullscreenTriangle.vert?raw";
 
@@ -51,8 +50,6 @@ function createFullscreenTriangleGeometry(): THREE.BufferGeometry {
 	return fullscreenTriangleGeometry;
 }
 
-const portalWidth = 2;
-const portalHeight = 5;
 const material1 = new THREE.MeshBasicMaterial({
 	color: "#ff0000"
 });
@@ -62,7 +59,7 @@ const material2 = new THREE.MeshBasicMaterial({
 
 
 export class PortalManager {
-	private portals: Portal[];
+	private portals: Portal[] = [];
 
 	private fullscreenTriangle: THREE.Mesh;
 	private fullscreenTriangleMaterial: THREE.Material;
@@ -70,23 +67,8 @@ export class PortalManager {
 	private portalCamera: THREE.PerspectiveCamera;
 	private frustum: THREE.Frustum = new THREE.Frustum();
 
-	constructor(physics: PhysicsWorld, objs: GameObject[]) {
-		this.portals = new Array(2);
-		this.portals[0] = new Portal(material1, portalWidth, portalHeight, physics);
-		this.portals[0].mesh.position.z = -5;
-		this.portals[0].mesh.position.y = 2.5;
-		this.portals[0].setAttachedObject(objs[2]);
-		this.portals[0].updatePositions();
+	private physicsWorld: PhysicsWorld;
 
-		this.portals[1] = new Portal(material2, portalWidth, portalHeight, physics);
-		this.portals[1].mesh.position.z = 5;
-		this.portals[1].mesh.position.y = 2.5;
-		this.portals[1].mesh.rotation.y = Math.PI;
-		this.portals[1].setAttachedObject(objs[1]);
-		this.portals[1].updatePositions();
-
-		this.portals[0].otherPortal = this.portals[1];
-		this.portals[1].otherPortal = this.portals[0];
 	public maxRecursion: number = 3;
 	public disableFrustumCulling: boolean = false;
 	public disablePolygonOffset: boolean = false;
@@ -94,6 +76,7 @@ export class PortalManager {
 	public disableCulling: boolean = false;
 	public disableRecursiveRendering: boolean = false;
 
+	constructor(physics: PhysicsWorld) {
 		const rtFov = 75;
 		const rtAspect = window.innerWidth / window.innerHeight;
 		const rtNear = 0.1;
@@ -101,6 +84,8 @@ export class PortalManager {
 		this.portalCamera = new THREE.PerspectiveCamera(rtFov, rtAspect, rtNear, rtFar);
 		this.portalCamera.layers.enable(SCENE_LAYER);
 		this.portalCamera.layers.enable(PLAYER_LAYER);
+
+		this.physicsWorld = physics;
 
 		this.fullscreenTriangleMaterial = new THREE.RawShaderMaterial({
 			depthWrite: false,
@@ -117,6 +102,19 @@ export class PortalManager {
 			fullscreenTriangleGeometry,
 			this.fullscreenTriangleMaterial
 		);
+	}
+
+	public addPortal(width: number, height: number): Portal {
+		const material = this.portals.length % 2 == 0 ? material1 : material2;
+		const portal = new Portal(material, width, height, this.physicsWorld)
+		this.portals.push(portal);
+
+		if (this.portals.length % 2 == 0) {
+			this.portals[this.portals.length - 2].otherPortal = this.portals[this.portals.length - 1];
+			this.portals[this.portals.length - 1].otherPortal = this.portals[this.portals.length - 2];
+		}
+
+		return portal;
 	}
 
 	private cameraProjScratch: THREE.Matrix4 = new THREE.Matrix4();

@@ -1,6 +1,7 @@
 {
 	"planes": [
 		{
+			"type": "plane",
 			"width": 10,
 			"height": 10,
 			"position": [
@@ -16,6 +17,8 @@
 			"uvScale": 0.2
 		},
 		{
+			"id": "near",
+			"type": "plane",
 			"width": 10,
 			"height": 6,
 			"position": [
@@ -31,6 +34,8 @@
 			"uvScale": 0.2
 		},
 		{
+			"id": "far",
+			"type": "plane",
 			"width": 10,
 			"height": 6,
 			"position": [
@@ -46,6 +51,7 @@
 			"uvScale": 0.2
 		},
 		{
+			"type": "plane",
 			"width": 10,
 			"height": 6,
 			"position": [
@@ -61,6 +67,7 @@
 			"uvScale": 0.2
 		},
 		{
+			"type": "plane",
 			"width": 10,
 			"height": 6,
 			"position": [
@@ -82,9 +89,59 @@
 			"position": [
 				0,
 				3,
-				3
+				5
 			]
 		}
 	],
-	"lights": []
+	"lights": [
+		{
+			"type": "directional",
+			"color": "#FFEE7C",
+			"intensity": 1,
+			"pos": [
+				35,
+				30,
+				25
+			],
+			"shadowFrustum": [
+				2,
+				2,
+				2,
+				2
+			],
+			"shadowIntensity": 2
+		}
+	],
+	"portals": [
+		{
+			"width": 2,
+			"height": 5,
+			"objectId": "near",
+			"position": [
+				0,
+				2.5,
+				5
+			],
+			"rotation": [
+				0,
+				1,
+				0
+			]
+		},
+		{
+			"width": 2,
+			"height": 5,
+			"objectId": "far",
+			"position": [
+				0,
+				2.5,
+				-5
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			]
+		}
+	]
 }

@@ -1,0 +1,297 @@
+{
+	"planes": [
+		{
+			"type": "plane",
+			"width": 10,
+			"height": 10,
+			"position": [
+				0,
+				0,
+				0
+			],
+			"rotation": [
+				-0.5,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"id": "near",
+			"type": "plane",
+			"width": 10,
+			"height": 6,
+			"position": [
+				0,
+				3,
+				5
+			],
+			"rotation": [
+				1,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 10,
+			"height": 6,
+			"position": [
+				0,
+				3,
+				-5
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 10,
+			"height": 6,
+			"position": [
+				5,
+				3,
+				0
+			],
+			"rotation": [
+				0,
+				-0.5,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 10,
+			"height": 6,
+			"position": [
+				-5,
+				3,
+				0
+			],
+			"rotation": [
+				0,
+				0.5,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 6,
+			"height": 6,
+			"position": [
+				0,
+				0,
+				30
+			],
+			"rotation": [
+				-0.5,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 6,
+			"height": 10,
+			"position": [
+				6,
+				0,
+				28
+			],
+			"rotation": [
+				-0.5,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 12,
+			"height": 6,
+			"position": [
+				3,
+				3,
+				33
+			],
+			"rotation": [
+				1,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"id": "far",
+			"type": "plane",
+			"width": 6,
+			"height": 6,
+			"position": [
+				0,
+				3,
+				27
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 10,
+			"height": 6,
+			"position": [
+				9,
+				3,
+				28
+			],
+			"rotation": [
+				0,
+				-0.5,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 6,
+			"height": 6,
+			"position": [
+				-3,
+				3,
+				30
+			],
+			"rotation": [
+				0,
+				0.5,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 6,
+			"height": 6,
+			"position": [
+				6,
+				3,
+				23
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"uvScale": 0.2
+		},
+		{
+			"type": "plane",
+			"width": 4,
+			"height": 6,
+			"position": [
+				3,
+				3,
+				25
+			],
+			"rotation": [
+				0,
+				0.5,
+				0
+			],
+			"uvScale": 0.2
+		}
+	],
+	"objects": [
+		{
+			"type": "ball",
+			"position": [
+				6,
+				3,
+				25
+			]
+		}
+	],
+	"lights": [
+		{
+			"type": "directional",
+			"color": "#FFFFFF",
+			"intensity": 1,
+			"pos": [
+				35,
+				30,
+				25
+			],
+			"shadowFrustum": [
+				2,
+				2,
+				2,
+				2
+			],
+			"shadowIntensity": 3
+		},
+		{
+			"type": "directional",
+			"color": "#FFFFFF",
+			"intensity": 1,
+			"pos": [
+				35,
+				30,
+				55
+			],
+			"shadowFrustum": [
+				2,
+				2,
+				2,
+				2.5
+			],
+			"shadowIntensity": 3,
+			"target": [
+				6,
+				0,
+				25
+			]
+		}
+	],
+	"portals": [
+		{
+			"width": 2,
+			"height": 5,
+			"objectId": "near",
+			"position": [
+				0,
+				2.5,
+				5
+			],
+			"rotation": [
+				0,
+				1,
+				0
+			]
+		},
+		{
+			"width": 2,
+			"height": 5,
+			"objectId": "far",
+			"position": [
+				0,
+				2.5,
+				27
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			]
+		}
+	]
+}

@@ -204,6 +204,7 @@ progress[value]::-moz-progress-bar {
 	text-shadow: none;
 }
 
+.levelcontainer,
 .pausecontainer {
 	display: grid;
 	flex-direction: column;

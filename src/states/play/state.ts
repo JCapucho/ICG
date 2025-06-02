@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import GUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 import RAPIER from '@dimforge/rapier3d';
 
@@ -13,6 +14,7 @@ import { InteractableObject } from '../../objects/InteractableObject';
 import { disposeLoadedData, LoadedData } from '../loading';
 import { PauseMenu } from './pausemenu';
 import { MainMenuState } from '../mainmenu';
+import { GameObject } from '../../objects/gameObject';
 
 export class PlayState extends AppState {
 	public scene: THREE.Scene;
@@ -55,13 +57,29 @@ export class PlayState extends AppState {
 		this.scene.environment = this.loadedData.skyboxTexture;
 
 		// Level geometry
-		const objs = [];
+		const objs: { [id: string]: GameObject } = {};
 		for (const plane of this.loadedData.levelData.planes) {
 			const obj = new PlaneObject(plane, this.loadedData.tiles107Material, this.scene, this.physicsWorld);
-			objs.push(obj);
+
+			if (plane.id)
+				objs[plane.id] = obj;
 		}
 
-		this.portalManager = new PortalManager(this.physicsWorld, objs);
+		// Portals
+		this.portalManager = new PortalManager(this.physicsWorld);
+
+		for (const portalData of this.loadedData.levelData.portals) {
+			const portal = this.portalManager.addPortal(portalData.width, portalData.height);
+
+			portal.mesh.position.set(...portalData.position);
+
+			portal.mesh.rotation.x = portalData.rotation[0] * Math.PI;
+			portal.mesh.rotation.y = portalData.rotation[1] * Math.PI;
+			portal.mesh.rotation.z = portalData.rotation[2] * Math.PI;
+
+			portal.setAttachedObject(objs[portalData.objectId]);
+			portal.updatePositions();
+		}
 
 		this.player = new Player(this.loadedData.playerModel, this.scene, this.physicsWorld, this.camera);
 
@@ -82,17 +100,11 @@ export class PlayState extends AppState {
 			const position = new THREE.Vector3();
 			const rot = new THREE.Euler();
 
-			if (obj.position) {
-				position.x = obj.position[0];
-				position.y = obj.position[1];
-				position.z = obj.position[2];
-			}
+			if (obj.position)
+				position.set(...obj.position);
 
-			if (obj.rotation) {
-				rot.x = obj.rotation[0];
-				rot.y = obj.rotation[1];
-				rot.z = obj.rotation[2];
-			}
+			if (obj.rotation)
+				rot.set(...obj.rotation);
 
 			interactable.warp(position, new THREE.Quaternion().setFromEuler(rot), new THREE.Quaternion());
 			this.interactableObjects.push(interactable);
@@ -102,13 +114,35 @@ export class PlayState extends AppState {
 		this.pauseMenu = new PauseMenu();
 
 		// lights
-		const light = new THREE.DirectionalLight(0xFFEE7C, 1);
-		light.shadow.camera.left = -10;
-		light.shadow.camera.right = 10;
-		light.shadow.intensity = 2;
-		light.position.set(7 * 5, 6 * 5, 5 * 5)
-		light.castShadow = true;
-		this.scene.add(light);
+		for (const lightData of this.loadedData.levelData.lights) {
+			console.log(lightData);
+
+			const light = new THREE.DirectionalLight(lightData.color, lightData.intensity);
+			light.castShadow = true;
+
+			if (lightData.shadowFrustum) {
+				light.shadow.camera.top *= lightData.shadowFrustum[0];
+				light.shadow.camera.right *= lightData.shadowFrustum[1];
+				light.shadow.camera.bottom *= lightData.shadowFrustum[2];
+				light.shadow.camera.left *= lightData.shadowFrustum[3];
+			}
+
+			if (lightData.shadowIntensity)
+				light.shadow.intensity = lightData.shadowIntensity;
+
+			if (lightData.pos)
+				light.position.set(...lightData.pos);
+
+			this.scene.add(light);
+
+			if (lightData.target) {
+				light.target.position.set(...lightData.target);
+				this.scene.add(light.target);
+			}
+
+			const helper = new THREE.DirectionalLightHelper(light);
+			this.scene.add(helper);
+		}
 	}
 
 	resize(width: number, height: number) {
