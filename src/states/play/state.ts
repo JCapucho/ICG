@@ -139,9 +139,6 @@ export class PlayState extends AppState {
 				light.target.position.set(...lightData.target);
 				this.scene.add(light.target);
 			}
-
-			const helper = new THREE.DirectionalLightHelper(light);
-			this.scene.add(helper);
 		}
 	}
 
