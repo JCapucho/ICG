@@ -135,7 +135,7 @@ export class LoadingState extends AppState {
 		const colorMap = app.textureLoader.load("Materials/Tiles107/Tiles107_Color.jpg", onTextureLoad);
 		this.itemsToLoad += 4;
 
-		this.tiles107Material = new THREE.MeshStandardMaterial({
+		this.tiles107Material = new THREE.MeshPhysicalMaterial({
 			map: colorMap,
 			aoMap,
 			normalMap,

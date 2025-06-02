@@ -7,8 +7,6 @@ import { GameObject } from '../objects/gameObject';
 
 import fullscreenTriangleVertexShader from "./fullscreenTriangle.vert?raw";
 
-const maxRecursion = 3;
-
 export function calculateCameraPosition(
 	cameraPos: THREE.Vector3,
 	inPortal: THREE.Object3D,
@@ -89,6 +87,12 @@ export class PortalManager {
 
 		this.portals[0].otherPortal = this.portals[1];
 		this.portals[1].otherPortal = this.portals[0];
+	public maxRecursion: number = 3;
+	public disableFrustumCulling: boolean = false;
+	public disablePolygonOffset: boolean = false;
+	public disablePortalBox: boolean = false;
+	public disableCulling: boolean = false;
+	public disableRecursiveRendering: boolean = false;
 
 		const rtFov = 75;
 		const rtAspect = window.innerWidth / window.innerHeight;
@@ -115,8 +119,6 @@ export class PortalManager {
 		);
 	}
 
-	private cameraPosScratch: THREE.Vector3 = new THREE.Vector3();
-	private cameraRotScratch: THREE.Quaternion = new THREE.Quaternion();
 	private cameraProjScratch: THREE.Matrix4 = new THREE.Matrix4();
 
 	private renderRecursive(
@@ -138,11 +140,11 @@ export class PortalManager {
 		context.stencilOp(context.KEEP, context.KEEP, context.KEEP);
 		renderer.render(scene, camera);
 
-		if (recursionLevel == maxRecursion)
+		if (recursionLevel == this.maxRecursion)
 			return;
 
-		const cameraPos = camera.getWorldPosition(this.cameraPosScratch);
-		const cameraRot = camera.getWorldQuaternion(this.cameraRotScratch);
+		const cameraPos = camera.getWorldPosition(new THREE.Vector3);
+		const cameraRot = camera.getWorldQuaternion(new THREE.Quaternion());
 
 		const savePos = camera.position.clone();
 		const saveRot = camera.rotation.clone();
@@ -151,20 +153,29 @@ export class PortalManager {
 			const portal = this.portals[i];
 			const outPortal = this.portals[(i + 1) % this.portals.length];
 
-			this.frustum.setFromProjectionMatrix(this.cameraProjScratch.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
-			if (!this.frustum.intersectsObject(portal.mesh))
-				continue;
+			if (!this.disableFrustumCulling) {
+				this.frustum.setFromProjectionMatrix(
+					this.cameraProjScratch.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+				if (!this.frustum.intersectsObject(portal.mesh))
+					continue;
+			}
 
 			const clipPlane = outPortal.getClippingPlane();
 
 			// START draw portal
 			context.stencilFunc(context.EQUAL, recursionLevel, 0b11111111);
 			context.stencilOp(context.KEEP, context.KEEP, context.INCR);
-			// Depth bias to separate from any wall
-			context.enable(context.POLYGON_OFFSET_FILL);
-			context.polygonOffset(-1, -1);
+			if (!this.disablePolygonOffset) {
+				// Depth bias to separate from any wall
+				context.enable(context.POLYGON_OFFSET_FILL);
+				context.polygonOffset(-1, -1);
+			}
 
-			portal.render(renderer, camera, recursionLevel == 0);
+			portal.render(
+				renderer,
+				camera,
+				!this.disablePortalBox && recursionLevel == 0
+			);
 
 			context.disable(context.POLYGON_OFFSET_FILL);
 			// END draw portal
@@ -184,9 +195,13 @@ export class PortalManager {
 			this.portalCamera.quaternion.copy(
 				calculateCameraRotation(cameraRot.clone(), portal.mesh, outPortal.mesh));
 
-			renderer.clippingPlanes = [clipPlane];
+			if (!this.disableCulling) {
+				renderer.clippingPlanes = [clipPlane];
+			}
 
-			this.renderRecursive(recursionLevel + 1, scene, this.portalCamera, renderer);
+			if (!this.disableRecursiveRendering) {
+				this.renderRecursive(recursionLevel + 1, scene, this.portalCamera, renderer);
+			}
 
 			renderer.clippingPlanes = [];
 

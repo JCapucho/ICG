@@ -261,8 +261,6 @@ export class Portal {
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
 
-		console.log("Portal enter");
-
 		otherUserData.portalable.enteredPortal(this);
 
 		this.attachedObject.collider.setCollisionGroups(portalAttachedObjectCollisionGroups);
@@ -284,8 +282,6 @@ export class Portal {
 
 		if (!otherUserData || !isPortalable(otherUserData))
 			return;
-
-		console.log("Portal exit");
 
 		otherUserData.portalable.exitedPortal();
 

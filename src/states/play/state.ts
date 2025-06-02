@@ -34,6 +34,8 @@ export class PlayState extends AppState {
 	private mouseLockListener: (() => void) | undefined;
 	private lockChangeListener: ((ev: Event) => void) | undefined;
 
+	private debugGUI: GUI | undefined;
+
 	constructor(loadedData: LoadedData) {
 		super();
 
@@ -137,13 +139,26 @@ export class PlayState extends AppState {
 	}
 
 	debugChanged(debug: boolean): void {
+		if (!this.debugGUI) {
+			this.debugGUI = new GUI();
+			this.debugGUI.add(this.portalManager, "maxRecursion", 1, 5, 1);
+			this.debugGUI.add(this.portalManager, "disableFrustumCulling");
+			this.debugGUI.add(this.portalManager, "disablePortalBox");
+			this.debugGUI.add(this.portalManager, "disableCulling");
+			this.debugGUI.add(this.portalManager, "disableRecursiveRendering");
+			this.debugGUI.add(this.portalManager, "disablePolygonOffset");
+		}
+
+		if (debug)
+			this.debugGUI.show();
+		else
+			this.debugGUI.hide();
+
 		this.physicsWorld.setDebug(debug, this.scene);
-		// this.portalManager.setDebug(debug);
 	}
 
 	debugUpdate(): void {
 		this.physicsWorld.debugUpdate();
-		// this.portalManager.debugUpdate(debug);
 	}
 
 	onStateEnter(app: Application): void {
@@ -204,6 +219,9 @@ export class PlayState extends AppState {
 
 	onStateExit(app: Application): void {
 		this.pauseMenu.disable(app);
+
+		if (this.debugGUI)
+			this.debugGUI.destroy();
 
 		if (this.pauseKeyListener)
 			document.removeEventListener("keydown", this.pauseKeyListener);
